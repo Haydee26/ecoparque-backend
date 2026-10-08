@@ -48,6 +48,8 @@ public class EspecieController {
         especie.setNombreEspanol(especieActualizada.getNombreEspanol());
         especie.setNombreCientifico(especieActualizada.getNombreCientifico());
         especie.setDescripcion(especieActualizada.getDescripcion());
+        especie.setZona(especieActualizada.getZona());
+        especie.setHabitats(especieActualizada.getHabitats());
         return especieRepository.save(especie);
     }
 }

@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import prog2.ecoparque.model.Usuario;
 import prog2.ecoparque.repository.UsuarioRepository;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -34,5 +36,17 @@ public class UsuarioController {
     @DeleteMapping("/{id}")
     public void eliminar(@PathVariable Long id) {
         usuarioRepository.deleteById(id);
+    }
+
+    @PutMapping("/{id}")
+    public Usuario actualizar(@PathVariable Long id, @RequestBody Usuario usuarioActualizado) {
+        Usuario usuario = usuarioRepository.findById(id).orElseThrow();
+        usuario.setNombreUsuario(usuarioActualizado.getNombreUsuario());
+        usuario.setRol(usuarioActualizado.getRol());
+        usuario.setNombrePersona(usuarioActualizado.getNombrePersona());
+        if (usuarioActualizado.getClave() != null && !usuarioActualizado.getClave().isBlank()) {
+            usuario.setClave(usuarioActualizado.getClave());
+        }
+        return usuarioRepository.save(usuario);
     }
 }

@@ -45,6 +45,7 @@ public class ItinerarioController {
         itinerario.setLongitudMetros(itinerarioActualizado.getLongitudMetros());
         itinerario.setMaximoVisitantes(itinerarioActualizado.getMaximoVisitantes());
         itinerario.setCantidadEspecies(itinerarioActualizado.getCantidadEspecies());
+        itinerario.setZonas(itinerarioActualizado.getZonas());
         return itinerarioRepository.save(itinerario);
     }
 }

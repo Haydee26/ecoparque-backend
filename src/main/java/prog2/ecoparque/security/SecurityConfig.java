@@ -21,15 +21,14 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.POST, "/api/**").hasRole("ADMINISTRADOR")
-                .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("ADMINISTRADOR")
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.GET, "/api/**").authenticated()
+                .requestMatchers("/api/**").hasRole("ADMINISTRADOR")
                 .anyRequest().authenticated()
-            )
-            .httpBasic(basic -> {
-            });
+                )
+                .httpBasic(basic -> {
+                });
 
         return http.build();
     }
