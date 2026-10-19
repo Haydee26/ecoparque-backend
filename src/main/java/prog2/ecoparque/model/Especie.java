@@ -22,6 +22,8 @@ public class Especie {
     private String nombreEspanol;
     private String nombreCientifico;
     private String descripcion;
+    /** Cantidad de ejemplares (animales) de esta especie en el parque. Nunca negativa. */
+    private Integer cantidadEjemplares;
     @ManyToOne
     @JoinColumn(name = "zona_id")
     private Zona zona;
@@ -65,6 +67,14 @@ public class Especie {
 
     public void setDescripcion(String descripcion) {
         this.descripcion = descripcion;
+    }
+
+    public Integer getCantidadEjemplares() {
+        return cantidadEjemplares;
+    }
+
+    public void setCantidadEjemplares(Integer cantidadEjemplares) {
+        this.cantidadEjemplares = cantidadEjemplares;
     }
 
     public Zona getZona() {

@@ -1,55 +1,49 @@
 package prog2.ecoparque.controller;
 
 import java.util.List;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
 import prog2.ecoparque.model.Especie;
-import prog2.ecoparque.repository.EspecieRepository;
+import prog2.ecoparque.service.EspecieService;
 
 @RestController
 @RequestMapping("/api/especies")
 public class EspecieController {
 
-    private final EspecieRepository especieRepository;
+    private final EspecieService especieService;
 
-    public EspecieController(EspecieRepository especieRepository) {
-        this.especieRepository = especieRepository;
+    public EspecieController(EspecieService especieService) {
+        this.especieService = especieService;
     }
 
     @GetMapping
     public List<Especie> listar() {
-        return especieRepository.findAll(org.springframework.data.domain.Sort.by("id"));
+        return especieService.listar();
+    }
+
+    @GetMapping("/cantidad")
+    public long contar() {
+        return especieService.contar();
     }
 
     @PostMapping
     public Especie crear(@RequestBody Especie especie) {
-        return especieRepository.save(especie);
+        return especieService.crear(especie);
+    }
+
+    @PutMapping("/{id}")
+    public Especie actualizar(@PathVariable Long id, @RequestBody Especie especie) {
+        return especieService.actualizar(id, especie);
     }
 
     @DeleteMapping("/{id}")
     public void eliminar(@PathVariable Long id) {
-        especieRepository.deleteById(id);
-    }
-    
- 
-    @GetMapping("/cantidad")
-    public long contar(){return especieRepository.count();
-    }
-        
-    @PutMapping("/{id}")
-    public Especie actualizar(@PathVariable Long id, @RequestBody Especie especieActualizada) {
-        Especie especie = especieRepository.findById(id).orElseThrow();
-        especie.setNombreEspanol(especieActualizada.getNombreEspanol());
-        especie.setNombreCientifico(especieActualizada.getNombreCientifico());
-        especie.setDescripcion(especieActualizada.getDescripcion());
-        especie.setZona(especieActualizada.getZona());
-        especie.setHabitats(especieActualizada.getHabitats());
-        return especieRepository.save(especie);
+        especieService.eliminar(id);
     }
 }
