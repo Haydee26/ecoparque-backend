@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import prog2.ecoparque.model.Usuario;
+import java.security.Principal;
 import prog2.ecoparque.repository.UsuarioRepository;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 
 @RestController
@@ -22,6 +22,7 @@ public class UsuarioController {
     public UsuarioController(UsuarioRepository usuarioRepository) {
         this.usuarioRepository = usuarioRepository;
     }
+
 
     @GetMapping
     public List<Usuario> listar() {
@@ -36,6 +37,11 @@ public class UsuarioController {
     @DeleteMapping("/{id}")
     public void eliminar(@PathVariable Long id) {
         usuarioRepository.deleteById(id);
+    }
+    
+    @GetMapping("/yo")
+    public Usuario yo(Principal principal) {
+        return usuarioRepository.findByNombreUsuario(principal.getName()).orElseThrow();
     }
 
     @PutMapping("/{id}")
