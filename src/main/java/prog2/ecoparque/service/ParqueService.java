@@ -1,5 +1,6 @@
 package prog2.ecoparque.service;
 
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import prog2.ecoparque.exception.ReglaDeNegocioException;
@@ -33,6 +34,12 @@ public class ParqueService {
     public EstadoParque estado() {
         Parque parque = parqueRepository.findById(Parque.ID_UNICO).orElseThrow(this::sinConfigurar);
         return armarEstado(parque);
+    }
+
+    /** Igual que estado(), pero sin error si todavia no se configuro el area total. */
+    @Transactional(readOnly = true)
+    public Optional<EstadoParque> estadoSiExiste() {
+        return parqueRepository.findById(Parque.ID_UNICO).map(this::armarEstado);
     }
 
     @Transactional

@@ -25,6 +25,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.GET, "/api/usuarios/yo").authenticated()
                 .requestMatchers("/api/usuarios", "/api/usuarios/**").hasRole("ADMINISTRADOR")
+                // Registro numerico del parque: solo el administrador lo ve.
+                .requestMatchers("/api/parque", "/api/parque/**").hasRole("ADMINISTRADOR")
+                .requestMatchers("/api/resumen", "/api/resumen/**").hasRole("ADMINISTRADOR")
                 .requestMatchers(HttpMethod.GET, "/api/**").authenticated()
                 .requestMatchers("/api/**").hasRole("ADMINISTRADOR")
                 .anyRequest().authenticated()
