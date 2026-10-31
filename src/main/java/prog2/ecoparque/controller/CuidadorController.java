@@ -5,48 +5,40 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.PutMapping;
 import prog2.ecoparque.model.Cuidador;
-import prog2.ecoparque.repository.CuidadorRepository;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import prog2.ecoparque.service.CuidadorService;
 
 @RestController
 @RequestMapping("/api/cuidadores")
 public class CuidadorController {
 
-    private final CuidadorRepository cuidadorRepository;
+    private final CuidadorService cuidadorService;
 
-    public CuidadorController(CuidadorRepository cuidadorRepository) {
-        this.cuidadorRepository = cuidadorRepository;
+    public CuidadorController(CuidadorService cuidadorService) {
+        this.cuidadorService = cuidadorService;
     }
 
     @GetMapping
     public List<Cuidador> listar() {
-        return cuidadorRepository.findAll(org.springframework.data.domain.Sort.by("id"));
+        return cuidadorService.listar();
     }
 
     @PostMapping
     public Cuidador crear(@RequestBody Cuidador cuidador) {
-        return cuidadorRepository.save(cuidador);
+        return cuidadorService.crear(cuidador);
     }
 
     @DeleteMapping("/{id}")
     public void eliminar(@PathVariable Long id) {
-        cuidadorRepository.deleteById(id);
+        cuidadorService.eliminar(id);
     }
 
     @PutMapping("/{id}")
-    public Cuidador actualizar(@PathVariable Long id, @RequestBody Cuidador cuidadorActualizado) {
-        Cuidador cuidador = cuidadorRepository.findById(id).orElseThrow();
-        cuidador.setNombre(cuidadorActualizado.getNombre());
-        cuidador.setDireccion(cuidadorActualizado.getDireccion());
-        cuidador.setTelefono(cuidadorActualizado.getTelefono());
-        cuidador.setFechaIngreso(cuidadorActualizado.getFechaIngreso());
-        return cuidadorRepository.save(cuidador);
+    public Cuidador actualizar(@PathVariable Long id, @RequestBody Cuidador cuidador) {
+        return cuidadorService.actualizar(id, cuidador);
     }
 }

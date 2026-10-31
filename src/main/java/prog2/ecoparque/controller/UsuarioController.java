@@ -1,58 +1,51 @@
 package prog2.ecoparque.controller;
 
+import java.security.Principal;
 import java.util.List;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import prog2.ecoparque.model.Usuario;
-import java.security.Principal;
-import prog2.ecoparque.repository.UsuarioRepository;
-import org.springframework.web.bind.annotation.PutMapping;
+import prog2.ecoparque.service.UsuarioService;
 
 @RestController
 @RequestMapping("/api/usuarios")
 public class UsuarioController {
 
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioService usuarioService;
 
-    public UsuarioController(UsuarioRepository usuarioRepository) {
-        this.usuarioRepository = usuarioRepository;
+    public UsuarioController(UsuarioService usuarioService) {
+        this.usuarioService = usuarioService;
     }
-
 
     @GetMapping
     public List<Usuario> listar() {
-        return usuarioRepository.findAll();
+        return usuarioService.listar();
+    }
+
+    /** Datos de quien inició sesión. */
+    @GetMapping("/yo")
+    public Usuario yo(Principal principal) {
+        return usuarioService.obtenerPorNombre(principal.getName());
     }
 
     @PostMapping
     public Usuario crear(@RequestBody Usuario usuario) {
-        return usuarioRepository.save(usuario);
-    }
-
-    @DeleteMapping("/{id}")
-    public void eliminar(@PathVariable Long id) {
-        usuarioRepository.deleteById(id);
-    }
-    
-    @GetMapping("/yo")
-    public Usuario yo(Principal principal) {
-        return usuarioRepository.findByNombreUsuario(principal.getName()).orElseThrow();
+        return usuarioService.crear(usuario);
     }
 
     @PutMapping("/{id}")
-    public Usuario actualizar(@PathVariable Long id, @RequestBody Usuario usuarioActualizado) {
-        Usuario usuario = usuarioRepository.findById(id).orElseThrow();
-        usuario.setNombreUsuario(usuarioActualizado.getNombreUsuario());
-        usuario.setRol(usuarioActualizado.getRol());
-        usuario.setNombrePersona(usuarioActualizado.getNombrePersona());
-        if (usuarioActualizado.getClave() != null && !usuarioActualizado.getClave().isBlank()) {
-            usuario.setClave(usuarioActualizado.getClave());
-        }
-        return usuarioRepository.save(usuario);
+    public Usuario actualizar(@PathVariable Long id, @RequestBody Usuario usuario) {
+        return usuarioService.actualizar(id, usuario);
+    }
+
+    @DeleteMapping("/{id}")
+    public void eliminar(@PathVariable Long id, Principal principal) {
+        usuarioService.eliminar(id, principal.getName());
     }
 }

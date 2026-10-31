@@ -1,0 +1,143 @@
+package prog2.ecoparque.service;
+
+import java.util.List;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import prog2.ecoparque.exception.RecursoNoEncontradoException;
+import prog2.ecoparque.exception.ReglaDeNegocioException;
+import prog2.ecoparque.model.RolUsuario;
+import prog2.ecoparque.model.Usuario;
+import prog2.ecoparque.repository.CuidadorRepository;
+import prog2.ecoparque.repository.GuiaRepository;
+import prog2.ecoparque.repository.UsuarioRepository;
+
+/**
+ * Reglas de los usuarios del sistema: nombre de usuario único, clave con un mínimo de largo,
+ * rol obligatorio, guías y cuidadores asociados a una persona que existe, y el sistema
+ * nunca se queda sin administradores ni deja que alguien se elimine a sí mismo.
+ */
+// Nombre de bean propio: en el paquete security ya existe otra clase UsuarioService (la del login).
+@Service("gestionDeUsuarios")
+public class UsuarioService {
+
+    private static final int LARGO_MINIMO_CLAVE = 4;
+
+    private final UsuarioRepository usuarioRepository;
+    private final GuiaRepository guiaRepository;
+    private final CuidadorRepository cuidadorRepository;
+
+    public UsuarioService(UsuarioRepository usuarioRepository, GuiaRepository guiaRepository,
+            CuidadorRepository cuidadorRepository) {
+        this.usuarioRepository = usuarioRepository;
+        this.guiaRepository = guiaRepository;
+        this.cuidadorRepository = cuidadorRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Usuario> listar() {
+        return usuarioRepository.findAll(Sort.by("id"));
+    }
+
+    /** Datos de quien inició sesión. */
+    @Transactional(readOnly = true)
+    public Usuario obtenerPorNombre(String nombreUsuario) {
+        return usuarioRepository.findByNombreUsuario(nombreUsuario)
+                .orElseThrow(() -> new RecursoNoEncontradoException("No existe el usuario " + nombreUsuario + "."));
+    }
+
+    @Transactional
+    public Usuario crear(Usuario datos) {
+        validar(datos, null, true);
+        // Se arma un usuario nuevo para que nadie pueda pisar uno existente mandando un id.
+        return usuarioRepository.save(new Usuario(datos.getNombreUsuario().trim(), datos.getClave(),
+                datos.getRol(), personaDe(datos)));
+    }
+
+    @Transactional
+    public Usuario actualizar(Long id, Usuario datos) {
+        Usuario usuario = buscar(id);
+        validar(datos, id, false);
+        if (usuario.getRol() == RolUsuario.ADMINISTRADOR && datos.getRol() != RolUsuario.ADMINISTRADOR
+                && esElUnicoAdministrador()) {
+            throw new ReglaDeNegocioException("No se puede quitar el rol al único administrador del sistema.");
+        }
+        usuario.setNombreUsuario(datos.getNombreUsuario().trim());
+        usuario.setRol(datos.getRol());
+        usuario.setNombrePersona(personaDe(datos));
+        // Una clave vacía significa "dejar la que ya tiene".
+        if (datos.getClave() != null && !datos.getClave().isBlank()) {
+            usuario.setClave(datos.getClave());
+        }
+        return usuarioRepository.save(usuario);
+    }
+
+    /**
+     * @param quienElimina nombre de usuario de quien hace el pedido
+     */
+    @Transactional
+    public void eliminar(Long id, String quienElimina) {
+        Usuario usuario = buscar(id);
+        if (usuario.getNombreUsuario().equals(quienElimina)) {
+            throw new ReglaDeNegocioException("No podés eliminar tu propio usuario.");
+        }
+        if (usuario.getRol() == RolUsuario.ADMINISTRADOR && esElUnicoAdministrador()) {
+            throw new ReglaDeNegocioException("No se puede eliminar al único administrador del sistema.");
+        }
+        usuarioRepository.deleteById(id);
+    }
+
+    private Usuario buscar(Long id) {
+        return usuarioRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("No existe el usuario " + id + "."));
+    }
+
+    private boolean esElUnicoAdministrador() {
+        return usuarioRepository.countByRol(RolUsuario.ADMINISTRADOR) <= 1;
+    }
+
+    private String personaDe(Usuario datos) {
+        return datos.getNombrePersona() == null ? "" : datos.getNombrePersona().trim();
+    }
+
+    private void validar(Usuario usuario, Long idActual, boolean esNuevo) {
+        if (usuario == null) {
+            throw new ReglaDeNegocioException("Faltan los datos del usuario.");
+        }
+        Validaciones.textoObligatorio(usuario.getNombreUsuario(), "El nombre de usuario");
+        Validaciones.obligatorio(usuario.getRol(), "El rol es obligatorio.");
+
+        usuarioRepository.findByNombreUsuario(usuario.getNombreUsuario().trim())
+                .filter(otro -> !otro.getId().equals(idActual))
+                .ifPresent(otro -> {
+                    throw new ReglaDeNegocioException("Ya existe un usuario llamado " + otro.getNombreUsuario() + ".");
+                });
+
+        // Al crear la clave es obligatoria; al modificar, si viene vacía se conserva la anterior.
+        boolean traeClave = usuario.getClave() != null && !usuario.getClave().isBlank();
+        if (esNuevo) {
+            Validaciones.textoObligatorio(usuario.getClave(), "La clave");
+        }
+        if (traeClave && usuario.getClave().length() < LARGO_MINIMO_CLAVE) {
+            throw new ReglaDeNegocioException("La clave debe tener al menos " + LARGO_MINIMO_CLAVE + " caracteres.");
+        }
+
+        validarPersona(usuario);
+    }
+
+    /** Un guía o cuidador tiene que estar vinculado a una persona ya cargada con ese nombre. */
+    private void validarPersona(Usuario usuario) {
+        String persona = personaDe(usuario);
+        if (usuario.getRol() == RolUsuario.GUIA) {
+            Validaciones.textoObligatorio(persona, "El nombre de la persona");
+            if (guiaRepository.findFirstByNombreIgnoreCase(persona).isEmpty()) {
+                throw new ReglaDeNegocioException("No hay una guía llamada " + persona + ". Cargala primero en Guías.");
+            }
+        } else if (usuario.getRol() == RolUsuario.CUIDADOR) {
+            Validaciones.textoObligatorio(persona, "El nombre de la persona");
+            if (cuidadorRepository.findFirstByNombreIgnoreCase(persona).isEmpty()) {
+                throw new ReglaDeNegocioException("No hay un cuidador llamado " + persona + ". Cargalo primero en Cuidadores.");
+            }
+        }
+    }
+}
