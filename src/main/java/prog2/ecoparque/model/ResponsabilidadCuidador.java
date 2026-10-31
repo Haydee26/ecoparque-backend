@@ -23,6 +23,8 @@ public class ResponsabilidadCuidador {
     @JoinColumn(name = "especie_id")
     private Especie especie;
     private LocalDate fechaDesde;
+    /** Fecha en que termina la responsabilidad. Vacia significa que sigue vigente. */
+    private LocalDate fechaHasta;
 
     public ResponsabilidadCuidador() {
     }
@@ -59,5 +61,13 @@ public class ResponsabilidadCuidador {
 
     public void setFechaDesde(LocalDate fechaDesde) {
         this.fechaDesde = fechaDesde;
+    }
+
+    public LocalDate getFechaHasta() {
+        return fechaHasta;
+    }
+
+    public void setFechaHasta(LocalDate fechaHasta) {
+        this.fechaHasta = fechaHasta;
     }
 }

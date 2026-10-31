@@ -20,10 +20,17 @@ final class Validaciones {
         }
     }
 
-    /** Si viene un valor, no puede ser negativo (cero esta permitido). */
+    /** Si viene un valor, tiene que ser 0 o mayor (cero esta permitido). */
     static void enteroNoNegativo(Integer valor, String campo) {
         if (valor != null && valor < 0) {
-            throw new ReglaDeNegocioException(campo + " no puede ser negativo.");
+            throw new ReglaDeNegocioException(campo + " debe ser 0 o mayor.");
+        }
+    }
+
+    /** El dato tiene que estar presente. */
+    static void obligatorio(Object valor, String mensaje) {
+        if (valor == null) {
+            throw new ReglaDeNegocioException(mensaje);
         }
     }
 

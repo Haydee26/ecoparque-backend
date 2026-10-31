@@ -22,7 +22,10 @@ public class AsignacionGuia {
     @ManyToOne
     @JoinColumn(name = "itinerario_id")
     private Itinerario itinerario;
+    /** Hora de inicio ("desde"). Se llama "hora" para no cambiar la columna ni lo que ya envian las pantallas. */
     private LocalTime hora;
+    /** Hora de fin ("hasta"). */
+    private LocalTime horaHasta;
 
     public AsignacionGuia() {
     }
@@ -59,5 +62,13 @@ public class AsignacionGuia {
 
     public void setHora(LocalTime hora) {
         this.hora = hora;
+    }
+
+    public LocalTime getHoraHasta() {
+        return horaHasta;
+    }
+
+    public void setHoraHasta(LocalTime horaHasta) {
+        this.horaHasta = horaHasta;
     }
 }
