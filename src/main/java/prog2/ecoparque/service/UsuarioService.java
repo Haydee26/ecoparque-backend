@@ -2,6 +2,7 @@ package prog2.ecoparque.service;
 
 import java.util.List;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import prog2.ecoparque.exception.RecursoNoEncontradoException;
@@ -14,7 +15,7 @@ import prog2.ecoparque.repository.UsuarioRepository;
 
 /**
  * Reglas de los usuarios del sistema: nombre de usuario único, clave con un mínimo de largo,
- * rol obligatorio, guías y cuidadores asociados a una persona que existe, y el sistema
+ * rol obligatorio, claves guardadas encriptadas (BCrypt), guías y cuidadores asociados a una persona que existe, y el sistema
  * nunca se queda sin administradores ni deja que alguien se elimine a sí mismo.
  */
 // Nombre de bean propio: en el paquete security ya existe otra clase UsuarioService (la del login).
@@ -22,16 +23,20 @@ import prog2.ecoparque.repository.UsuarioRepository;
 public class UsuarioService {
 
     private static final int LARGO_MINIMO_CLAVE = 4;
+    // BCrypt solo usa los primeros 72 bytes de la clave.
+    private static final int LARGO_MAXIMO_CLAVE = 72;
 
     private final UsuarioRepository usuarioRepository;
     private final GuiaRepository guiaRepository;
     private final CuidadorRepository cuidadorRepository;
+    private final PasswordEncoder codificador;
 
     public UsuarioService(UsuarioRepository usuarioRepository, GuiaRepository guiaRepository,
-            CuidadorRepository cuidadorRepository) {
+            CuidadorRepository cuidadorRepository, PasswordEncoder codificador) {
         this.usuarioRepository = usuarioRepository;
         this.guiaRepository = guiaRepository;
         this.cuidadorRepository = cuidadorRepository;
+        this.codificador = codificador;
     }
 
     @Transactional(readOnly = true)
@@ -50,7 +55,7 @@ public class UsuarioService {
     public Usuario crear(Usuario datos) {
         validar(datos, null, true);
         // Se arma un usuario nuevo para que nadie pueda pisar uno existente mandando un id.
-        return usuarioRepository.save(new Usuario(datos.getNombreUsuario().trim(), datos.getClave(),
+        return usuarioRepository.save(new Usuario(datos.getNombreUsuario().trim(), codificador.encode(datos.getClave()),
                 datos.getRol(), personaDe(datos)));
     }
 
@@ -67,7 +72,7 @@ public class UsuarioService {
         usuario.setNombrePersona(personaDe(datos));
         // Una clave vacía significa "dejar la que ya tiene".
         if (datos.getClave() != null && !datos.getClave().isBlank()) {
-            usuario.setClave(datos.getClave());
+            usuario.setClave(codificador.encode(datos.getClave()));
         }
         return usuarioRepository.save(usuario);
     }
@@ -120,6 +125,9 @@ public class UsuarioService {
         }
         if (traeClave && usuario.getClave().length() < LARGO_MINIMO_CLAVE) {
             throw new ReglaDeNegocioException("La clave debe tener al menos " + LARGO_MINIMO_CLAVE + " caracteres.");
+        }
+        if (traeClave && usuario.getClave().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > LARGO_MAXIMO_CLAVE) {
+            throw new ReglaDeNegocioException("La clave no puede superar los " + LARGO_MAXIMO_CLAVE + " caracteres.");
         }
 
         validarPersona(usuario);
