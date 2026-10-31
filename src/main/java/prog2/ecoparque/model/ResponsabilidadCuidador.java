@@ -1,5 +1,6 @@
 package prog2.ecoparque.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -16,6 +17,8 @@ public class ResponsabilidadCuidador {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    /** Al listar responsabilidades solo viajan el id y el nombre del cuidador; sus datos personales no. */
+    @JsonIgnoreProperties({"direccion", "telefono", "fechaIngreso"})
     @ManyToOne
     @JoinColumn(name = "cuidador_id")
     private Cuidador cuidador;

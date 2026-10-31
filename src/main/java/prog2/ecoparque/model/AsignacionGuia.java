@@ -1,5 +1,6 @@
 package prog2.ecoparque.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -16,6 +17,8 @@ public class AsignacionGuia {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    /** Al listar asignaciones solo viajan el id y el nombre de la guia; sus datos personales no. */
+    @JsonIgnoreProperties({"direccion", "telefono", "fechaIngreso"})
     @ManyToOne
     @JoinColumn(name = "guia_id")
     private Guia guia;
