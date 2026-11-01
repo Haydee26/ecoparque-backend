@@ -5,7 +5,6 @@ import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import prog2.ecoparque.dto.EmpleadoAntiguedad;
 import prog2.ecoparque.dto.GuiaPublica;
 import prog2.ecoparque.dto.MisDatos;
 import prog2.ecoparque.service.PersonalService;
@@ -32,11 +31,5 @@ public class PersonalController {
     @GetMapping("/personal/yo")
     public MisDatos misDatos(Principal principal) {
         return personalService.misDatos(principal.getName());
-    }
-
-    /** Solo el administrador (lo controla SecurityConfig). */
-    @GetMapping("/personal/antiguedad")
-    public List<EmpleadoAntiguedad> antiguedad() {
-        return personalService.listarPorAntiguedad();
     }
 }

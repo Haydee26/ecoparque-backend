@@ -9,7 +9,9 @@ import prog2.ecoparque.exception.RecursoNoEncontradoException;
 import prog2.ecoparque.exception.ReglaDeNegocioException;
 import prog2.ecoparque.model.RolUsuario;
 import prog2.ecoparque.model.Usuario;
+import prog2.ecoparque.model.Empleado;
 import prog2.ecoparque.repository.CuidadorRepository;
+import prog2.ecoparque.repository.EmpleadoRepository;
 import prog2.ecoparque.repository.GuiaRepository;
 import prog2.ecoparque.repository.UsuarioRepository;
 
@@ -29,13 +31,16 @@ public class UsuarioService {
     private final UsuarioRepository usuarioRepository;
     private final GuiaRepository guiaRepository;
     private final CuidadorRepository cuidadorRepository;
+    private final EmpleadoRepository empleadoRepository;
     private final PasswordEncoder codificador;
 
     public UsuarioService(UsuarioRepository usuarioRepository, GuiaRepository guiaRepository,
-            CuidadorRepository cuidadorRepository, PasswordEncoder codificador) {
+            CuidadorRepository cuidadorRepository, EmpleadoRepository empleadoRepository,
+            PasswordEncoder codificador) {
         this.usuarioRepository = usuarioRepository;
         this.guiaRepository = guiaRepository;
         this.cuidadorRepository = cuidadorRepository;
+        this.empleadoRepository = empleadoRepository;
         this.codificador = codificador;
     }
 
@@ -133,19 +138,33 @@ public class UsuarioService {
         validarPersona(usuario);
     }
 
-    /** Un guía o cuidador tiene que estar vinculado a una persona ya cargada con ese nombre. */
+    /**
+     * La persona del usuario tiene que ser un empleado ya cargado (por nombre y apellido).
+     * Un guía o cuidador la necesita siempre, y con el rol que dice; el administrador, si la completa;
+     * el invitado no la necesita.
+     */
     private void validarPersona(Usuario usuario) {
+        // El invitado es una persona de afuera: no tiene que ser un empleado.
+        if (usuario.getRol() == RolUsuario.INVITADO) {
+            return;
+        }
         String persona = personaDe(usuario);
-        if (usuario.getRol() == RolUsuario.GUIA) {
+        boolean necesitaPersona = usuario.getRol() == RolUsuario.GUIA || usuario.getRol() == RolUsuario.CUIDADOR;
+        if (necesitaPersona) {
             Validaciones.textoObligatorio(persona, "El nombre de la persona");
-            if (guiaRepository.findFirstByNombreIgnoreCase(persona).isEmpty()) {
-                throw new ReglaDeNegocioException("No hay una guía llamada " + persona + ". Cargala primero en Guías.");
-            }
-        } else if (usuario.getRol() == RolUsuario.CUIDADOR) {
-            Validaciones.textoObligatorio(persona, "El nombre de la persona");
-            if (cuidadorRepository.findFirstByNombreIgnoreCase(persona).isEmpty()) {
-                throw new ReglaDeNegocioException("No hay un cuidador llamado " + persona + ". Cargalo primero en Cuidadores.");
-            }
+        }
+        if (persona.isEmpty()) {
+            return;
+        }
+        Empleado empleado = empleadoRepository.buscarPorNombreCompleto(persona)
+                .orElseThrow(() -> new ReglaDeNegocioException("No hay un empleado llamado " + persona
+                        + ". Cargalo primero en Empleados (nombre y apellido)."));
+        if (usuario.getRol() == RolUsuario.GUIA && guiaRepository.findFirstByEmpleado_Id(empleado.getId()).isEmpty()) {
+            throw new ReglaDeNegocioException(empleado.nombreCompleto() + " todavía no es guía. Dale el rol en Guías.");
+        }
+        if (usuario.getRol() == RolUsuario.CUIDADOR
+                && cuidadorRepository.findFirstByEmpleado_Id(empleado.getId()).isEmpty()) {
+            throw new ReglaDeNegocioException(empleado.nombreCompleto() + " todavía no es cuidador. Dale el rol en Cuidadores.");
         }
     }
 }

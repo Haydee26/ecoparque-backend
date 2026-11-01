@@ -1,11 +1,15 @@
 -- Esquema de la base de datos del Ecoparque.
--- Entidades: zona, habitat, especie, itinerario, guia, cuidador, usuario.
+-- Entidades: zona, habitat, especie, itinerario, empleado, guia, cuidador, usuario.
+-- empleado: todas las personas del parque (incluido el administrador). Guia y cuidador son
+-- roles de un empleado (relacion 1 a 1 con empleado), sin datos personales propios.
 -- Relaciones simples M:N (sin atributos propios): especie_habitat, itinerario_zona.
 -- Entidades asociativas (M:N CON atributos propios, por eso tienen PK propia):
 --   asignacion_guia (hora desde/hasta), responsabilidad_cuidador (fecha desde/hasta).
 -- parque: un unico registro (id 1) con el area total; lo carga el administrador.
 
-CREATE DATABASE IF NOT EXISTS ecoparque CHARACTER SET utf8mb4;
+-- ATENCION: esta linea borra la base "ecoparque" completa y la vuelve a crear con datos de ejemplo.
+DROP DATABASE IF EXISTS ecoparque;
+CREATE DATABASE ecoparque CHARACTER SET utf8mb4;
 USE ecoparque;
 
 CREATE TABLE zona (
@@ -69,20 +73,29 @@ CREATE TABLE itinerario_zona (
     FOREIGN KEY (zona_id) REFERENCES zona(id) ON DELETE CASCADE
 );
 
+CREATE TABLE empleado (
+    id                INT AUTO_INCREMENT PRIMARY KEY,
+    nombre            VARCHAR(100) NOT NULL,
+    apellido          VARCHAR(100) NOT NULL,
+    dni               VARCHAR(20) NOT NULL UNIQUE,
+    fecha_nacimiento  DATE NOT NULL,
+    direccion         VARCHAR(150) NOT NULL,
+    telefono          VARCHAR(30) NOT NULL,
+    correo            VARCHAR(150),
+    fecha_ingreso     DATE NOT NULL
+);
+
+-- Roles: un empleado puede ser guia, cuidador, ambos o ninguno (UNIQUE = una sola vez cada rol).
 CREATE TABLE guia (
-    id             INT AUTO_INCREMENT PRIMARY KEY,
-    nombre         VARCHAR(100) NOT NULL UNIQUE,
-    direccion      VARCHAR(150),
-    telefono       VARCHAR(30),
-    fecha_ingreso  DATE NOT NULL
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    empleado_id  INT NOT NULL UNIQUE,
+    FOREIGN KEY (empleado_id) REFERENCES empleado(id)
 );
 
 CREATE TABLE cuidador (
-    id             INT AUTO_INCREMENT PRIMARY KEY,
-    nombre         VARCHAR(100) NOT NULL UNIQUE,
-    direccion      VARCHAR(150),
-    telefono       VARCHAR(30),
-    fecha_ingreso  DATE NOT NULL
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    empleado_id  INT NOT NULL UNIQUE,
+    FOREIGN KEY (empleado_id) REFERENCES empleado(id)
 );
 
 CREATE TABLE parque (
@@ -96,7 +109,7 @@ CREATE TABLE usuario (
     nombre_usuario  VARCHAR(50) NOT NULL UNIQUE,
     -- 100 caracteres: la clave se guarda encriptada con BCrypt (60 caracteres).
     clave           VARCHAR(100) NOT NULL,
-    rol             ENUM('ADMINISTRADOR', 'GUIA', 'CUIDADOR') NOT NULL,
+    rol             ENUM('ADMINISTRADOR', 'GUIA', 'CUIDADOR', 'INVITADO') NOT NULL,
     nombre_persona  VARCHAR(100) NOT NULL DEFAULT ''
 );
 
@@ -129,12 +142,11 @@ CREATE TABLE responsabilidad_cuidador (
 
 -- Estas claves de ejemplo estan en texto comun: el backend las encripta solo al arrancar.
 INSERT INTO usuario (nombre_usuario, clave, rol, nombre_persona) VALUES
-    ('admin', '1234', 'ADMINISTRADOR', ''),
+    ('admin', '1234', 'ADMINISTRADOR', 'Sofia Ramirez'),
     ('laura', '1111', 'GUIA', 'Laura Perez'),
-    ('mario', '2222', 'CUIDADOR', 'Mario Gomez');
+    ('mario', '2222', 'CUIDADOR', 'Mario Gomez'),
+    ('invitado', '3333', 'INVITADO', 'Visita');
 
-
-USE ecoparque;
 
 -- PARQUE (area total en m2; el administrador puede cambiarla desde Registro del parque)
 INSERT INTO parque (id, nombre, area_total) VALUES (1, 'EcoParque', 10000);
@@ -159,11 +171,11 @@ INSERT INTO habitat_continente (habitat_id, continente) VALUES
 
 -- ESPECIES
 INSERT INTO especie
-(nombre_espanol, nombre_cientifico, descripcion, zona_id)
+(nombre_espanol, nombre_cientifico, descripcion, cantidad_ejemplares, zona_id)
 VALUES
-('Leon', 'Panthera leo', 'Mamifero carnivoro', 1),
-('Jaguar', 'Panthera onca', 'Felino de selva', 2),
-('Oso pardo', 'Ursus arctos', 'Mamifero omnivoro', 3);
+('Leon', 'Panthera leo', 'Mamifero carnivoro', 4, 1),
+('Jaguar', 'Panthera onca', 'Felino de selva', 2, 2),
+('Oso pardo', 'Ursus arctos', 'Mamifero omnivoro', 3, 3);
 
 -- ESPECIE - HABITAT
 INSERT INTO especie_habitat (especie_id, habitat_id) VALUES
@@ -184,19 +196,22 @@ INSERT INTO itinerario_zona (itinerario_id, zona_id) VALUES
 (1, 2),
 (2, 3);
 
--- GUIAS
-INSERT INTO guia
-(nombre, direccion, telefono, fecha_ingreso)
+-- EMPLEADOS (todas las personas del parque)
+INSERT INTO empleado
+(nombre, apellido, dni, fecha_nacimiento, direccion, telefono, correo, fecha_ingreso)
 VALUES
-('Laura Perez', 'Av. Rivadavia 1200', '11111111', '2024-03-10'),
-('Carlos Diaz', 'Av. Corrientes 500', '22222222', '2023-08-15');
+('Sofia', 'Ramirez', '28123456', '1985-04-12', 'Calle 5 800', '11110000', 'sofia.ramirez@ecoparque.com', '2021-02-01'),
+('Laura', 'Perez', '33456789', '1990-07-21', 'Av. Rivadavia 1200', '11111111', 'laura.perez@ecoparque.com', '2024-03-10'),
+('Carlos', 'Diaz', '31234567', '1988-11-02', 'Av. Corrientes 500', '22222222', NULL, '2023-08-15'),
+('Mario', 'Gomez', '30987654', '1986-01-30', 'Calle 10 150', '33333333', 'mario.gomez@ecoparque.com', '2022-05-20'),
+('Ana', 'Lopez', '35678901', '1993-09-14', 'Calle 20 300', '44444444', NULL, '2025-01-12'),
+('Julia', 'Torres', '36123987', '1995-03-08', 'Calle 30 450', '55555555', NULL, '2025-06-01');
 
--- CUIDADORES
-INSERT INTO cuidador
-(nombre, direccion, telefono, fecha_ingreso)
-VALUES
-('Mario Gomez', 'Calle 10 150', '33333333', '2022-05-20'),
-('Ana Lopez', 'Calle 20 300', '44444444', '2025-01-12');
+-- GUIAS (rol de guia: Laura Perez y Carlos Diaz)
+INSERT INTO guia (empleado_id) VALUES (2), (3);
+
+-- CUIDADORES (rol de cuidador: Mario Gomez y Ana Lopez)
+INSERT INTO cuidador (empleado_id) VALUES (4), (5);
 
 -- ASIGNACION GUIA
 INSERT INTO asignacion_guia

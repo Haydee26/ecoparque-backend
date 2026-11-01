@@ -1,22 +1,20 @@
 package prog2.ecoparque.service;
 
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import prog2.ecoparque.dto.EmpleadoAntiguedad;
 import prog2.ecoparque.dto.GuiaPublica;
 import prog2.ecoparque.dto.MisDatos;
 import prog2.ecoparque.exception.RecursoNoEncontradoException;
 import prog2.ecoparque.model.AsignacionGuia;
 import prog2.ecoparque.model.Cuidador;
+import prog2.ecoparque.model.Empleado;
 import prog2.ecoparque.model.Guia;
 import prog2.ecoparque.model.ResponsabilidadCuidador;
 import prog2.ecoparque.model.RolUsuario;
@@ -24,6 +22,7 @@ import prog2.ecoparque.model.Usuario;
 import prog2.ecoparque.model.Zona;
 import prog2.ecoparque.repository.AsignacionGuiaRepository;
 import prog2.ecoparque.repository.CuidadorRepository;
+import prog2.ecoparque.repository.EmpleadoRepository;
 import prog2.ecoparque.repository.GuiaRepository;
 import prog2.ecoparque.repository.ResponsabilidadCuidadorRepository;
 import prog2.ecoparque.repository.UsuarioRepository;
@@ -38,15 +37,17 @@ public class PersonalService {
     private final GuiaRepository guiaRepository;
     private final CuidadorRepository cuidadorRepository;
     private final UsuarioRepository usuarioRepository;
+    private final EmpleadoRepository empleadoRepository;
     private final AsignacionGuiaRepository asignacionRepository;
     private final ResponsabilidadCuidadorRepository responsabilidadRepository;
 
     public PersonalService(GuiaRepository guiaRepository, CuidadorRepository cuidadorRepository,
-            UsuarioRepository usuarioRepository, AsignacionGuiaRepository asignacionRepository,
+            UsuarioRepository usuarioRepository, EmpleadoRepository empleadoRepository, AsignacionGuiaRepository asignacionRepository,
             ResponsabilidadCuidadorRepository responsabilidadRepository) {
         this.guiaRepository = guiaRepository;
         this.cuidadorRepository = cuidadorRepository;
         this.usuarioRepository = usuarioRepository;
+        this.empleadoRepository = empleadoRepository;
         this.asignacionRepository = asignacionRepository;
         this.responsabilidadRepository = responsabilidadRepository;
     }
@@ -62,35 +63,13 @@ public class PersonalService {
         }
 
         List<GuiaPublica> resultado = new ArrayList<>();
-        for (Guia guia : guiaRepository.findAll(Sort.by("nombre"))) {
+        List<Guia> guias = new ArrayList<>(guiaRepository.findAll());
+        guias.sort(Comparator.comparing(Guia::getNombre, String.CASE_INSENSITIVE_ORDER));
+        for (Guia guia : guias) {
             List<AsignacionGuia> propias = porGuia.getOrDefault(guia.getId(), List.of());
             resultado.add(new GuiaPublica(guia.getId(), guia.getNombre(), codigos(propias), zonas(propias)));
         }
         return resultado;
-    }
-
-    /** Guias y cuidadores juntos, del que hace mas tiempo que ingreso al que ingreso hace menos. */
-    @Transactional(readOnly = true)
-    public List<EmpleadoAntiguedad> listarPorAntiguedad() {
-        LocalDate hoy = LocalDate.now();
-        List<EmpleadoAntiguedad> resultado = new ArrayList<>();
-        for (Guia guia : guiaRepository.findAll()) {
-            resultado.add(new EmpleadoAntiguedad(guia.getId(), guia.getNombre(), "Guía",
-                    guia.getFechaIngreso(), anios(guia.getFechaIngreso(), hoy)));
-        }
-        for (Cuidador cuidador : cuidadorRepository.findAll()) {
-            resultado.add(new EmpleadoAntiguedad(cuidador.getId(), cuidador.getNombre(), "Cuidador",
-                    cuidador.getFechaIngreso(), anios(cuidador.getFechaIngreso(), hoy)));
-        }
-        // La fecha mas vieja primero; quien no tiene fecha de ingreso queda al final.
-        resultado.sort(Comparator
-                .comparing(EmpleadoAntiguedad::fechaIngreso, Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(e -> e.nombre() == null ? "" : e.nombre().toLowerCase()));
-        return resultado;
-    }
-
-    private Long anios(LocalDate ingreso, LocalDate hoy) {
-        return ingreso == null || ingreso.isAfter(hoy) ? null : ChronoUnit.YEARS.between(ingreso, hoy);
     }
 
     /** Datos de la persona que inicio sesion. */
@@ -101,27 +80,29 @@ public class PersonalService {
         RolUsuario rol = usuario.getRol();
         String nombrePersona = usuario.getNombrePersona() == null ? "" : usuario.getNombrePersona().trim();
 
-        if (rol == RolUsuario.GUIA && !nombrePersona.isEmpty()) {
-            Guia guia = guiaRepository.findFirstByNombreIgnoreCase(nombrePersona).orElse(null);
-            if (guia != null) {
-                List<AsignacionGuia> propias = new ArrayList<>();
-                for (AsignacionGuia asignacion : asignacionRepository.findAll()) {
-                    if (asignacion.getGuia() != null && Objects.equals(asignacion.getGuia().getId(), guia.getId())) {
-                        propias.add(asignacion);
+        Empleado empleado = nombrePersona.isEmpty() ? null
+                : empleadoRepository.buscarPorNombreCompleto(nombrePersona).orElse(null);
+        if (empleado != null) {
+            List<AsignacionGuia> propias = new ArrayList<>();
+            List<String> especies = List.of();
+            if (rol == RolUsuario.GUIA) {
+                Guia guia = guiaRepository.findFirstByEmpleado_Id(empleado.getId()).orElse(null);
+                if (guia != null) {
+                    for (AsignacionGuia asignacion : asignacionRepository.findAll()) {
+                        if (asignacion.getGuia() != null && Objects.equals(asignacion.getGuia().getId(), guia.getId())) {
+                            propias.add(asignacion);
+                        }
                     }
                 }
-                return new MisDatos(usuario.getNombreUsuario(), rol.name(), guia.getNombre(), guia.getDireccion(),
-                        guia.getTelefono(), guia.getFechaIngreso(), itinerariosConHorario(propias), List.of());
+            } else if (rol == RolUsuario.CUIDADOR) {
+                Cuidador cuidador = cuidadorRepository.findFirstByEmpleado_Id(empleado.getId()).orElse(null);
+                if (cuidador != null) {
+                    especies = especiesVigentes(cuidador);
+                }
             }
-        }
-
-        if (rol == RolUsuario.CUIDADOR && !nombrePersona.isEmpty()) {
-            Cuidador cuidador = cuidadorRepository.findFirstByNombreIgnoreCase(nombrePersona).orElse(null);
-            if (cuidador != null) {
-                return new MisDatos(usuario.getNombreUsuario(), rol.name(), cuidador.getNombre(),
-                        cuidador.getDireccion(), cuidador.getTelefono(), cuidador.getFechaIngreso(),
-                        List.of(), especiesVigentes(cuidador));
-            }
+            return new MisDatos(usuario.getNombreUsuario(), rol == null ? "" : rol.name(), empleado.nombreCompleto(),
+                    empleado.getDireccion(), empleado.getTelefono(), empleado.getFechaIngreso(),
+                    itinerariosConHorario(propias), especies);
         }
 
         String nombre = nombrePersona.isEmpty() ? usuario.getNombreUsuario() : nombrePersona;

@@ -68,11 +68,30 @@ final class Validaciones {
         }
     }
 
-    /** Los datos que comparten guías y cuidadores. */
-    static void datosPersonales(String nombre, String telefono, LocalDate fechaIngreso) {
-        textoObligatorio(nombre, "El nombre");
-        telefonoOpcional(telefono);
-        fechaDeIngreso(fechaIngreso);
+    /** El DNI es obligatorio y tiene 7 u 8 numeros, sin puntos ni espacios. */
+    static void dni(String dni) {
+        textoObligatorio(dni, "El DNI");
+        if (!dni.trim().matches("\\d{7,8}")) {
+            throw new ReglaDeNegocioException("El DNI tiene que tener 7 u 8 números, sin puntos ni espacios.");
+        }
+    }
+
+    /** El correo es opcional; si viene, tiene que tener forma de correo (algo@dominio.com). */
+    static void correoOpcional(String correo) {
+        if (correo != null && !correo.isBlank() && !correo.trim().matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) {
+            throw new ReglaDeNegocioException("El correo electrónico no es válido (por ejemplo: nombre@correo.com).");
+        }
+    }
+
+    /** La fecha de nacimiento es obligatoria, pasada, y la persona tiene que ser mayor de edad. */
+    static void fechaDeNacimiento(LocalDate fecha) {
+        obligatorio(fecha, "La fecha de nacimiento es obligatoria.");
+        if (fecha.isBefore(LocalDate.of(1900, 1, 1)) || !fecha.isBefore(LocalDate.now())) {
+            throw new ReglaDeNegocioException("La fecha de nacimiento no es válida.");
+        }
+        if (fecha.plusYears(18).isAfter(LocalDate.now())) {
+            throw new ReglaDeNegocioException("El empleado tiene que ser mayor de edad.");
+        }
     }
 
     /** "La clave es obligatoria." / "El nombre es obligatorio." según el género del campo. */

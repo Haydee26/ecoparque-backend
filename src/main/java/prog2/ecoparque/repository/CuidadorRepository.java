@@ -6,5 +6,5 @@ import prog2.ecoparque.model.Cuidador;
 
 public interface CuidadorRepository extends JpaRepository<Cuidador, Long> {
 
-    Optional<Cuidador> findFirstByNombreIgnoreCase(String nombre);
+    Optional<Cuidador> findFirstByEmpleado_Id(Long empleadoId);
 }

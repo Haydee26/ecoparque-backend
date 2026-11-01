@@ -29,8 +29,8 @@ public class SecurityConfig {
                 // Datos propios y lista de guias sin datos personales: cualquier usuario con sesion.
                 .requestMatchers(HttpMethod.GET, "/api/personal/yo").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/guias/publico").authenticated()
-                // Lista de personal por antiguedad: solo el administrador.
-                .requestMatchers("/api/personal/antiguedad").hasRole("ADMINISTRADOR")
+                // Base de datos de empleados (datos personales, DNI): solo el administrador.
+                .requestMatchers("/api/empleados", "/api/empleados/**").hasRole("ADMINISTRADOR")
                 .requestMatchers("/api/usuarios", "/api/usuarios/**").hasRole("ADMINISTRADOR")
                 // Registro numerico del parque: solo el administrador lo ve.
                 .requestMatchers("/api/parque", "/api/parque/**").hasRole("ADMINISTRADOR")
