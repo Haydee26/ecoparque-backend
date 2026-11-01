@@ -1,7 +1,9 @@
 package prog2.ecoparque.service;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +11,7 @@ import java.util.Objects;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import prog2.ecoparque.dto.EmpleadoAntiguedad;
 import prog2.ecoparque.dto.GuiaPublica;
 import prog2.ecoparque.dto.MisDatos;
 import prog2.ecoparque.exception.RecursoNoEncontradoException;
@@ -64,6 +67,30 @@ public class PersonalService {
             resultado.add(new GuiaPublica(guia.getId(), guia.getNombre(), codigos(propias), zonas(propias)));
         }
         return resultado;
+    }
+
+    /** Guias y cuidadores juntos, del que hace mas tiempo que ingreso al que ingreso hace menos. */
+    @Transactional(readOnly = true)
+    public List<EmpleadoAntiguedad> listarPorAntiguedad() {
+        LocalDate hoy = LocalDate.now();
+        List<EmpleadoAntiguedad> resultado = new ArrayList<>();
+        for (Guia guia : guiaRepository.findAll()) {
+            resultado.add(new EmpleadoAntiguedad(guia.getId(), guia.getNombre(), "Guía",
+                    guia.getFechaIngreso(), anios(guia.getFechaIngreso(), hoy)));
+        }
+        for (Cuidador cuidador : cuidadorRepository.findAll()) {
+            resultado.add(new EmpleadoAntiguedad(cuidador.getId(), cuidador.getNombre(), "Cuidador",
+                    cuidador.getFechaIngreso(), anios(cuidador.getFechaIngreso(), hoy)));
+        }
+        // La fecha mas vieja primero; quien no tiene fecha de ingreso queda al final.
+        resultado.sort(Comparator
+                .comparing(EmpleadoAntiguedad::fechaIngreso, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(e -> e.nombre() == null ? "" : e.nombre().toLowerCase()));
+        return resultado;
+    }
+
+    private Long anios(LocalDate ingreso, LocalDate hoy) {
+        return ingreso == null || ingreso.isAfter(hoy) ? null : ChronoUnit.YEARS.between(ingreso, hoy);
     }
 
     /** Datos de la persona que inicio sesion. */

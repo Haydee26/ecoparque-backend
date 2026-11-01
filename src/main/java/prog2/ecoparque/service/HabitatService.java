@@ -10,7 +10,8 @@ import prog2.ecoparque.model.Habitat;
 import prog2.ecoparque.repository.HabitatRepository;
 
 /**
- * Reglas de los hábitats: nombre, clima y vegetación obligatorios, y no se repite el nombre.
+ * Reglas de los hábitats: nombre, clima, vegetación y al menos un continente obligatorios,
+ * y no se repite el nombre.
  */
 @Service
 public class HabitatService {
@@ -30,8 +31,10 @@ public class HabitatService {
     public Habitat crear(Habitat datos) {
         validar(datos, null);
         // Se arma un hábitat nuevo para que nadie pueda pisar uno existente mandando un id.
-        return habitatRepository.save(new Habitat(datos.getNombre().trim(), datos.getClima().trim(),
-                datos.getVegetacionPredominante().trim()));
+        Habitat nuevo = new Habitat(datos.getNombre().trim(), datos.getClima().trim(),
+                datos.getVegetacionPredominante().trim());
+        nuevo.setContinentes(Continentes.normalizar(datos.getContinentes()));
+        return habitatRepository.save(nuevo);
     }
 
     @Transactional
@@ -41,6 +44,7 @@ public class HabitatService {
         habitat.setNombre(datos.getNombre().trim());
         habitat.setClima(datos.getClima().trim());
         habitat.setVegetacionPredominante(datos.getVegetacionPredominante().trim());
+        habitat.setContinentes(Continentes.normalizar(datos.getContinentes()));
         return habitatRepository.save(habitat);
     }
 
@@ -64,6 +68,7 @@ public class HabitatService {
         Validaciones.textoObligatorio(habitat.getNombre(), "El nombre del hábitat");
         Validaciones.textoObligatorio(habitat.getClima(), "El clima");
         Validaciones.textoObligatorio(habitat.getVegetacionPredominante(), "La vegetación predominante");
+        Continentes.normalizar(habitat.getContinentes());
         habitatRepository.findFirstByNombreIgnoreCase(habitat.getNombre().trim())
                 .filter(otro -> !otro.getId().equals(idActual))
                 .ifPresent(otro -> {

@@ -153,8 +153,8 @@ INSERT INTO habitat (nombre, clima, vegetacion_predominante) VALUES
 
 -- CONTINENTES DE LOS HABITATS
 INSERT INTO habitat_continente (habitat_id, continente) VALUES
-(1, 'Africa'),
-(2, 'America del Sur'),
+(1, 'África'),
+(2, 'América del Sur'),
 (3, 'Europa');
 
 -- ESPECIES

@@ -24,10 +24,13 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/error").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/usuarios/yo").authenticated()
                 // Datos propios y lista de guias sin datos personales: cualquier usuario con sesion.
                 .requestMatchers(HttpMethod.GET, "/api/personal/yo").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/guias/publico").authenticated()
+                // Lista de personal por antiguedad: solo el administrador.
+                .requestMatchers("/api/personal/antiguedad").hasRole("ADMINISTRADOR")
                 .requestMatchers("/api/usuarios", "/api/usuarios/**").hasRole("ADMINISTRADOR")
                 // Registro numerico del parque: solo el administrador lo ve.
                 .requestMatchers("/api/parque", "/api/parque/**").hasRole("ADMINISTRADOR")
