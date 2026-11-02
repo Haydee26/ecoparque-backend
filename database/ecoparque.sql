@@ -15,7 +15,13 @@ USE ecoparque;
 CREATE TABLE zona (
     id        INT AUTO_INCREMENT PRIMARY KEY,
     nombre    VARCHAR(100) NOT NULL UNIQUE,
-    extension DOUBLE NOT NULL
+    extension DOUBLE NOT NULL,
+    -- Lugar en el mapa del parque (cuadricula de 10 columnas x 6 filas): esquina superior
+    -- izquierda y tamano en casilleros. Son opcionales: una zona sin ubicar no se dibuja.
+    columna   INT NULL,
+    fila      INT NULL,
+    ancho     INT NULL,
+    alto      INT NULL
 );
 
 CREATE TABLE habitat (
@@ -152,22 +158,31 @@ INSERT INTO usuario (nombre_usuario, clave, rol, nombre_persona) VALUES
 INSERT INTO parque (id, nombre, area_total) VALUES (1, 'EcoParque', 10000);
 
 -- ZONAS
-INSERT INTO zona (nombre, extension) VALUES
-('Sabana Africana', 1500),
-('Selva Tropical', 1200),
-('Bosque Templado', 900);
+INSERT INTO zona (nombre, extension, columna, fila, ancho, alto) VALUES
+('Sabana Africana', 1500, 1, 1, 4, 3),
+('Selva Tropical', 1200, 5, 1, 3, 3),
+('Bosque Templado', 900, 4, 4, 3, 3),
+('Montaña', 1100, 8, 1, 3, 3),
+('Desierto', 1000, 1, 4, 3, 3),
+('Humedal', 800, 7, 4, 3, 3);
 
 -- HABITATS
 INSERT INTO habitat (nombre, clima, vegetacion_predominante) VALUES
 ('Sabana', 'Calido y seco', 'Pastizales'),
 ('Selva', 'Calido y humedo', 'Vegetacion densa'),
-('Bosque', 'Templado', 'Arboles y arbustos');
+('Bosque', 'Templado', 'Arboles y arbustos'),
+('Montaña', 'Frio y seco', 'Pastos de altura'),
+('Desierto', 'Calido y arido', 'Cactus y arbustos bajos'),
+('Humedal', 'Templado y humedo', 'Juncos y plantas acuaticas');
 
 -- CONTINENTES DE LOS HABITATS
 INSERT INTO habitat_continente (habitat_id, continente) VALUES
 (1, 'África'),
 (2, 'América del Sur'),
-(3, 'Europa');
+(3, 'Europa'),
+(4, 'América del Sur'),
+(5, 'África'),
+(6, 'América del Sur');
 
 -- ESPECIES
 INSERT INTO especie
@@ -175,26 +190,36 @@ INSERT INTO especie
 VALUES
 ('Leon', 'Panthera leo', 'Mamifero carnivoro', 4, 1),
 ('Jaguar', 'Panthera onca', 'Felino de selva', 2, 2),
-('Oso pardo', 'Ursus arctos', 'Mamifero omnivoro', 3, 3);
+('Oso pardo', 'Ursus arctos', 'Mamifero omnivoro', 3, 3),
+('Condor andino', 'Vultur gryphus', 'Ave carroñera de gran tamaño', 2, 4),
+('Camello', 'Camelus dromedarius', 'Mamifero herbivoro del desierto', 3, 5),
+('Flamenco', 'Phoenicopterus chilensis', 'Ave zancuda de plumaje rosado', 6, 6);
 
 -- ESPECIE - HABITAT
 INSERT INTO especie_habitat (especie_id, habitat_id) VALUES
 (1, 1),
 (2, 2),
-(3, 3);
+(3, 3),
+(4, 4),
+(5, 5),
+(6, 6);
 
 -- ITINERARIOS
 INSERT INTO itinerario
 (codigo, duracion_minutos, longitud_metros, maximo_visitantes, cantidad_especies)
 VALUES
 ('IT01', 60, 1200, 20, 2),
-('IT02', 45, 800, 15, 1);
+('IT02', 45, 800, 15, 1),
+('IT03', 50, 1000, 18, 3);
 
 -- ITINERARIO - ZONA
 INSERT INTO itinerario_zona (itinerario_id, zona_id) VALUES
 (1, 1),
 (1, 2),
-(2, 3);
+(2, 3),
+(3, 4),
+(3, 5),
+(3, 6);
 
 -- EMPLEADOS (todas las personas del parque)
 INSERT INTO empleado
