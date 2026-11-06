@@ -2,7 +2,7 @@
 
 Servidor (API REST) del **Sistema de gestión del Ecoparque**. Trabajo práctico final de **Programación II** – INSPT-UTN, docente Miguel Silva.
 
-**Autora:** Haydee (trabajo individual).
+**Autora:** Haydee Cruz (trabajo individual).
 
 ## Repositorios del proyecto
 
