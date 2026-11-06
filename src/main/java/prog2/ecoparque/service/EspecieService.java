@@ -9,6 +9,7 @@ import prog2.ecoparque.exception.RecursoNoEncontradoException;
 import prog2.ecoparque.exception.ReglaDeNegocioException;
 import prog2.ecoparque.model.Especie;
 import prog2.ecoparque.repository.EspecieRepository;
+import java.time.LocalDate;
 
 /**
  * Reglas de las especies: nombre obligatorio y cantidad de ejemplares
@@ -68,6 +69,32 @@ public class EspecieService {
         especieRepository.flush();
     }
 
+    @Transactional
+    public Especie avisarEnferma(Long id, String observacion ,String usuario){
+    Validaciones.textoObligatorio(observacion, "La observacion de salud");
+    Especie especie = buscar (id);
+    especie.setEnferma(true);
+    especie.setObservacionSalud(observacion.trim());
+    especie.setFechaAvisoSalud(LocalDate.now());
+    especie.setAvisadoPor(usuario);
+    return especieRepository.save(especie);
+    }
+    
+    @Transactional
+    public Especie marcarSana(Long id){
+    Especie especie = buscar (id);
+    especie.setEnferma(false);
+    especie.setObservacionSalud(null);
+    especie.setFechaAvisoSalud(null);
+    especie.setAvisadoPor(null);
+    return especieRepository.save(especie);
+    }
+    
+    @Transactional(readOnly = true)
+    public List<Especie> listarEnfermas(){
+    return especieRepository.findByEnfermaTrue();
+    }
+    
     private Especie buscar(Long id) {
         return especieRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No existe la especie " + id + "."));

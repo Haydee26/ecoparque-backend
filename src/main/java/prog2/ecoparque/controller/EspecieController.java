@@ -1,6 +1,7 @@
 package prog2.ecoparque.controller;
 
 import java.util.List;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,5 +46,29 @@ public class EspecieController {
     @DeleteMapping("/{id}")
     public void eliminar(@PathVariable Long id) {
         especieService.eliminar(id);
+    }
+
+    /** Lo que llega al avisar que una especie está enferma: solo el texto. */
+    public record AvisoSalud(String observacion) {
+    }
+
+    @GetMapping("/enfermas")
+    public List<Especie> enfermas() {
+        return especieService.listarEnfermas();
+    }
+
+    /**
+     * Authentication la completa Spring Security con quien hizo el pedido:
+     * así el usuario sale de la sesión y no de lo que manda la pantalla.
+     */
+    @PutMapping("/{id}/enferma")
+    public Especie avisarEnferma(@PathVariable Long id, @RequestBody AvisoSalud aviso,
+            Authentication autenticacion) {
+        return especieService.avisarEnferma(id, aviso.observacion(), autenticacion.getName());
+    }
+
+    @PutMapping("/{id}/sana")
+    public Especie marcaSana(@PathVariable Long id) {
+        return especieService.marcarSana(id);
     }
 }

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import prog2.ecoparque.dto.UsuarioDatos;
 import prog2.ecoparque.model.Usuario;
 import prog2.ecoparque.service.UsuarioService;
 
@@ -35,13 +36,13 @@ public class UsuarioController {
     }
 
     @PostMapping
-    public Usuario crear(@RequestBody Usuario usuario) {
-        return usuarioService.crear(usuario);
+    public Usuario crear(@RequestBody UsuarioDatos datos) {
+        return usuarioService.crear(datos);
     }
 
     @PutMapping("/{id}")
-    public Usuario actualizar(@PathVariable Long id, @RequestBody Usuario usuario) {
-        return usuarioService.actualizar(id, usuario);
+    public Usuario actualizar(@PathVariable Long id, @RequestBody UsuarioDatos datos) {
+        return usuarioService.actualizar(id, datos);
     }
 
     @DeleteMapping("/{id}")

@@ -1,10 +1,14 @@
 -- Esquema de la base de datos del Ecoparque.
--- Entidades: zona, habitat, especie, itinerario, empleado, guia, cuidador, usuario.
+-- Entidades: zona, habitat, especie, itinerario, empleado, guia, cuidador, rol, usuario.
+-- especie guarda ademas el aviso de salud (enferma, observacion_salud, fecha_aviso_salud, avisado_por):
+--   el cuidador avisa que una especie esta enferma y lo ven el administrador y el veterinario.
 -- empleado: todas las personas del parque (incluido el administrador). Guia y cuidador son
 -- roles de un empleado (relacion 1 a 1 con empleado), sin datos personales propios.
 -- Relaciones simples M:N (sin atributos propios): especie_habitat, itinerario_zona.
 -- Entidades asociativas (M:N CON atributos propios, por eso tienen PK propia):
 --   asignacion_guia (hora desde/hasta), responsabilidad_cuidador (fecha desde/hasta).
+-- rol: lo crea el administrador y le otorga permisos (tabla rol_permiso: cada permiso es
+--   SECCION_VER o SECCION_EDITAR). Cada usuario tiene un rol.
 -- parque: un unico registro (id 1) con el area total; lo carga el administrador.
 
 -- ATENCION: esta linea borra la base "ecoparque" completa y la vuelve a crear con datos de ejemplo.
@@ -47,6 +51,12 @@ CREATE TABLE especie (
     descripcion        VARCHAR(500),
     cantidad_ejemplares INT NOT NULL DEFAULT 0,
     zona_id            INT NOT NULL,
+    -- Aviso de salud: lo carga quien tiene el permiso SALUD_EDITAR (por ejemplo, el cuidador).
+    -- La fecha y el usuario los pone el servidor, no la pantalla.
+    enferma            TINYINT(1) NOT NULL DEFAULT 0,
+    observacion_salud  VARCHAR(255),
+    fecha_aviso_salud  DATE,
+    avisado_por        VARCHAR(255),
     FOREIGN KEY (zona_id) REFERENCES zona(id)
 );
 
@@ -110,13 +120,31 @@ CREATE TABLE parque (
     area_total  DOUBLE
 );
 
+-- Roles de usuario. Los cuatro "base" (es_base = 1) no se pueden borrar ni renombrar;
+-- el administrador puede crear todos los que quiera desde la pantalla Roles.
+CREATE TABLE rol (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    nombre       VARCHAR(30) NOT NULL UNIQUE,
+    descripcion  VARCHAR(200) NOT NULL DEFAULT '',
+    es_base      TINYINT(1) NOT NULL DEFAULT 0
+);
+
+-- Permisos de cada rol (relacion M:N entre rol y el catalogo fijo de permisos del sistema).
+CREATE TABLE rol_permiso (
+    rol_id   INT NOT NULL,
+    permiso  VARCHAR(40) NOT NULL,
+    PRIMARY KEY (rol_id, permiso),
+    FOREIGN KEY (rol_id) REFERENCES rol(id) ON DELETE CASCADE
+);
+
 CREATE TABLE usuario (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     nombre_usuario  VARCHAR(50) NOT NULL UNIQUE,
     -- 100 caracteres: la clave se guarda encriptada con BCrypt (60 caracteres).
     clave           VARCHAR(100) NOT NULL,
-    rol             ENUM('ADMINISTRADOR', 'GUIA', 'CUIDADOR', 'INVITADO') NOT NULL,
-    nombre_persona  VARCHAR(100) NOT NULL DEFAULT ''
+    rol_id          INT NOT NULL,
+    nombre_persona  VARCHAR(100) NOT NULL DEFAULT '',
+    FOREIGN KEY (rol_id) REFERENCES rol(id)
 );
 
 -- Entidad asociativa: Guia <-> Itinerario, con atributo propio "hora".
@@ -146,12 +174,77 @@ CREATE TABLE responsabilidad_cuidador (
     UNIQUE (cuidador_id, especie_id, fecha_desde)
 );
 
+-- ROLES base
+INSERT INTO rol (nombre, descripcion, es_base) VALUES
+    ('ADMINISTRADOR', 'Gestiona todo el sistema', 1),
+    ('GUIA', 'Consulta el parque y sus propios itinerarios', 1),
+    ('CUIDADOR', 'Consulta el parque y las especies a su cargo', 1),
+    ('INVITADO', 'Visita: solo consulta el parque', 1);
+
+-- ROL de ejemplo creado por el administrador (no es base): el veterinario ve las especies
+-- que los cuidadores avisaron como enfermas y puede corregir el aviso o marcarlas sanas.
+INSERT INTO rol (nombre, descripcion, es_base) VALUES
+    ('VETERINARIO', 'Atiende la salud de las especies', 0);
+
+-- PERMISOS: el administrador tiene todos; guia, cuidador e invitado consultan el parque.
+INSERT INTO rol_permiso (rol_id, permiso) VALUES
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'ZONAS_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'ZONAS_EDITAR'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'HABITATS_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'HABITATS_EDITAR'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'ESPECIES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'ESPECIES_EDITAR'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'ITINERARIOS_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'ITINERARIOS_EDITAR'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'ASIGNACIONES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'ASIGNACIONES_EDITAR'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'RESPONSABILIDADES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'RESPONSABILIDADES_EDITAR'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'EMPLEADOS_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'EMPLEADOS_EDITAR'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'GUIAS_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'GUIAS_EDITAR'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'CUIDADORES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'CUIDADORES_EDITAR'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'USUARIOS_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'USUARIOS_EDITAR'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'ROLES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'ROLES_EDITAR'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'PARQUE_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'PARQUE_EDITAR'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'SALUD_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'SALUD_EDITAR'),
+    ((SELECT id FROM rol WHERE nombre = 'GUIA'), 'ZONAS_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'GUIA'), 'HABITATS_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'GUIA'), 'ESPECIES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'GUIA'), 'ITINERARIOS_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'GUIA'), 'ASIGNACIONES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'GUIA'), 'RESPONSABILIDADES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'CUIDADOR'), 'ZONAS_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'CUIDADOR'), 'HABITATS_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'CUIDADOR'), 'ESPECIES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'CUIDADOR'), 'ITINERARIOS_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'CUIDADOR'), 'ASIGNACIONES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'CUIDADOR'), 'RESPONSABILIDADES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'CUIDADOR'), 'SALUD_EDITAR'),
+    ((SELECT id FROM rol WHERE nombre = 'INVITADO'), 'ZONAS_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'INVITADO'), 'HABITATS_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'INVITADO'), 'ESPECIES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'INVITADO'), 'ITINERARIOS_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'INVITADO'), 'ASIGNACIONES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'INVITADO'), 'RESPONSABILIDADES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'VETERINARIO'), 'ESPECIES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'VETERINARIO'), 'CUIDADORES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'VETERINARIO'), 'SALUD_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'VETERINARIO'), 'SALUD_EDITAR');
+
 -- Estas claves de ejemplo estan en texto comun: el backend las encripta solo al arrancar.
-INSERT INTO usuario (nombre_usuario, clave, rol, nombre_persona) VALUES
-    ('admin', '1234', 'ADMINISTRADOR', 'Sofia Ramirez'),
-    ('laura', '1111', 'GUIA', 'Laura Perez'),
-    ('mario', '2222', 'CUIDADOR', 'Mario Gomez'),
-    ('invitado', '3333', 'INVITADO', 'Visita');
+INSERT INTO usuario (nombre_usuario, clave, rol_id, nombre_persona) VALUES
+    ('admin', '1234', (SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'Sofia Ramirez'),
+    ('laura', '1111', (SELECT id FROM rol WHERE nombre = 'GUIA'), 'Laura Perez'),
+    ('mario', '2222', (SELECT id FROM rol WHERE nombre = 'CUIDADOR'), 'Mario Gomez'),
+    ('invitado', '3333', (SELECT id FROM rol WHERE nombre = 'INVITADO'), 'Visita'),
+    ('vet', '4444', (SELECT id FROM rol WHERE nombre = 'VETERINARIO'), 'Pablo Suarez');
 
 
 -- PARQUE (area total en m2; el administrador puede cambiarla desde Registro del parque)
@@ -230,7 +323,8 @@ VALUES
 ('Carlos', 'Diaz', '31234567', '1988-11-02', 'Av. Corrientes 500', '22222222', NULL, '2023-08-15'),
 ('Mario', 'Gomez', '30987654', '1986-01-30', 'Calle 10 150', '33333333', 'mario.gomez@ecoparque.com', '2022-05-20'),
 ('Ana', 'Lopez', '35678901', '1993-09-14', 'Calle 20 300', '44444444', NULL, '2025-01-12'),
-('Julia', 'Torres', '36123987', '1995-03-08', 'Calle 30 450', '55555555', NULL, '2025-06-01');
+('Julia', 'Torres', '36123987', '1995-03-08', 'Calle 30 450', '55555555', NULL, '2025-06-01'),
+('Pablo', 'Suarez', '29876543', '1984-06-18', 'Calle 40 600', '66666666', 'pablo.suarez@ecoparque.com', '2023-11-05');
 
 -- GUIAS (rol de guia: Laura Perez y Carlos Diaz)
 INSERT INTO guia (empleado_id) VALUES (2), (3);

@@ -17,7 +17,7 @@ import prog2.ecoparque.exception.ReglaDeNegocioException;
 import prog2.ecoparque.model.Empleado;
 import prog2.ecoparque.model.Guia;
 import prog2.ecoparque.model.Cuidador;
-import prog2.ecoparque.model.RolUsuario;
+import prog2.ecoparque.model.Rol;
 import prog2.ecoparque.model.Usuario;
 import prog2.ecoparque.repository.CuidadorRepository;
 import prog2.ecoparque.repository.EmpleadoRepository;
@@ -56,7 +56,7 @@ public class EmpleadoService {
         cuidadorRepository.findAll().forEach(c -> cuidadores.add(c.getEmpleadoId()));
         Set<String> administradores = new HashSet<>();
         for (Usuario usuario : usuarioRepository.findAll()) {
-            if (usuario.getRol() == RolUsuario.ADMINISTRADOR && usuario.getNombrePersona() != null) {
+            if (Rol.ADMINISTRADOR.equals(usuario.getRol()) && usuario.getNombrePersona() != null) {
                 administradores.add(normalizar(usuario.getNombrePersona()));
             }
         }
@@ -162,7 +162,7 @@ public class EmpleadoService {
         if (quiere && actual == null) {
             guiaRepository.save(new Guia(empleado));
         } else if (!quiere && actual != null) {
-            rechazarSiTieneUsuario(empleado, RolUsuario.GUIA, "guía");
+            rechazarSiTieneUsuario(empleado, Rol.GUIA, "guía");
             try {
                 guiaRepository.delete(actual);
                 guiaRepository.flush();
@@ -178,7 +178,7 @@ public class EmpleadoService {
         if (quiere && actual == null) {
             cuidadorRepository.save(new Cuidador(empleado));
         } else if (!quiere && actual != null) {
-            rechazarSiTieneUsuario(empleado, RolUsuario.CUIDADOR, "cuidador");
+            rechazarSiTieneUsuario(empleado, Rol.CUIDADOR, "cuidador");
             try {
                 cuidadorRepository.delete(actual);
                 cuidadorRepository.flush();
@@ -190,9 +190,9 @@ public class EmpleadoService {
     }
 
     /** Un usuario con rol de guia o cuidador necesita que su persona siga teniendo ese rol. */
-    private void rechazarSiTieneUsuario(Empleado empleado, RolUsuario rol, String nombreDelRol) {
+    private void rechazarSiTieneUsuario(Empleado empleado, String rol, String nombreDelRol) {
         for (Usuario usuario : usuarioRepository.findAll()) {
-            if (usuario.getRol() == rol && usuario.getNombrePersona() != null
+            if (rol.equals(usuario.getRol()) && usuario.getNombrePersona() != null
                     && usuario.getNombrePersona().trim().equalsIgnoreCase(empleado.nombreCompleto())) {
                 throw new ReglaDeNegocioException("No se puede quitar el rol de " + nombreDelRol + " a "
                         + empleado.nombreCompleto() + ": tiene el usuario " + usuario.getNombreUsuario()

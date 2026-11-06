@@ -51,7 +51,11 @@ public class ManejadorDeErrores {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<RespuestaError> cuerpoIlegible(HttpMessageNotReadableException e) {
-        return responder(HttpStatus.BAD_REQUEST, "El formato de los datos enviados no es válido.");
+        // Se agrega el motivo tecnico para poder encontrar rapido que campo no se pudo leer.
+        Throwable causa = e.getMostSpecificCause();
+        String detalle = causa == null || causa.getMessage() == null ? ""
+                : " (" + causa.getMessage().split("\\R")[0] + ")";
+        return responder(HttpStatus.BAD_REQUEST, "El formato de los datos enviados no es válido." + detalle);
     }
 
     private ResponseEntity<RespuestaError> responder(HttpStatus estado, String mensaje) {

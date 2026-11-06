@@ -17,7 +17,7 @@ import prog2.ecoparque.model.Cuidador;
 import prog2.ecoparque.model.Empleado;
 import prog2.ecoparque.model.Guia;
 import prog2.ecoparque.model.ResponsabilidadCuidador;
-import prog2.ecoparque.model.RolUsuario;
+import prog2.ecoparque.model.Rol;
 import prog2.ecoparque.model.Usuario;
 import prog2.ecoparque.model.Zona;
 import prog2.ecoparque.repository.AsignacionGuiaRepository;
@@ -77,7 +77,7 @@ public class PersonalService {
     public MisDatos misDatos(String nombreUsuario) {
         Usuario usuario = usuarioRepository.findByNombreUsuario(nombreUsuario)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No existe el usuario " + nombreUsuario + "."));
-        RolUsuario rol = usuario.getRol();
+        String rol = usuario.getRol() == null ? "" : usuario.getRol();
         String nombrePersona = usuario.getNombrePersona() == null ? "" : usuario.getNombrePersona().trim();
 
         Empleado empleado = nombrePersona.isEmpty() ? null
@@ -85,7 +85,7 @@ public class PersonalService {
         if (empleado != null) {
             List<AsignacionGuia> propias = new ArrayList<>();
             List<String> especies = List.of();
-            if (rol == RolUsuario.GUIA) {
+            if (Rol.GUIA.equals(rol)) {
                 Guia guia = guiaRepository.findFirstByEmpleado_Id(empleado.getId()).orElse(null);
                 if (guia != null) {
                     for (AsignacionGuia asignacion : asignacionRepository.findAll()) {
@@ -94,19 +94,19 @@ public class PersonalService {
                         }
                     }
                 }
-            } else if (rol == RolUsuario.CUIDADOR) {
+            } else if (Rol.CUIDADOR.equals(rol)) {
                 Cuidador cuidador = cuidadorRepository.findFirstByEmpleado_Id(empleado.getId()).orElse(null);
                 if (cuidador != null) {
                     especies = especiesVigentes(cuidador);
                 }
             }
-            return new MisDatos(usuario.getNombreUsuario(), rol == null ? "" : rol.name(), empleado.nombreCompleto(),
+            return new MisDatos(usuario.getNombreUsuario(), rol, empleado.nombreCompleto(),
                     empleado.getDireccion(), empleado.getTelefono(), empleado.getFechaIngreso(),
                     itinerariosConHorario(propias), especies);
         }
 
         String nombre = nombrePersona.isEmpty() ? usuario.getNombreUsuario() : nombrePersona;
-        return new MisDatos(usuario.getNombreUsuario(), rol == null ? "" : rol.name(), nombre,
+        return new MisDatos(usuario.getNombreUsuario(), rol, nombre,
                 null, null, null, List.of(), List.of());
     }
 

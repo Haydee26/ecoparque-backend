@@ -9,6 +9,7 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -22,6 +23,11 @@ public class Especie {
     private String nombreEspanol;
     private String nombreCientifico;
     private String descripcion;
+    private boolean enferma = false;
+    private String observacionSalud;
+    private LocalDate fechaAvisoSalud;
+    private String avisadoPor;
+            
     /** Cantidad de ejemplares (animales) de esta especie en el parque. Nunca negativa. */
     private Integer cantidadEjemplares;
     @ManyToOne
@@ -92,4 +98,38 @@ public class Especie {
     public void setHabitats(Set<Habitat> habitats) {
         this.habitats = habitats;
     }
+
+    public boolean isEnferma() {
+        return enferma;
+    }
+
+    public void setEnferma(boolean enferma) {
+        this.enferma = enferma;
+    }
+
+    public String getObservacionSalud() {
+        return observacionSalud;
+    }
+
+    public void setObservacionSalud(String observacionSalud) {
+        this.observacionSalud = observacionSalud;
+    }
+
+    public LocalDate getFechaAvisoSalud() {
+        return fechaAvisoSalud;
+    }
+
+    public void setFechaAvisoSalud(LocalDate fechaAvisoSalud) {
+        this.fechaAvisoSalud = fechaAvisoSalud;
+    }
+
+    public String getAvisadoPor() {
+        return avisadoPor;
+    }
+
+    public void setAvisadoPor(String avisadoPor) {
+        this.avisadoPor = avisadoPor;
+    }
+    
+    
 }
