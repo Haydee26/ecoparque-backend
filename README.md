@@ -79,7 +79,7 @@ La seguridad (`SecurityConfig`) decide el acceso a cada ruta según los **permis
 | laura | 1111 | Guía |
 | mario | 2222 | Cuidador |
 | invitado | 3333 | Invitado |
-| vet | 4444 | Veterinario |
+| sofi | 4444 | Veterinario |
 
 Las claves del script están en texto plano de ejemplo; al arrancar, el sistema las encripta solo.
 
