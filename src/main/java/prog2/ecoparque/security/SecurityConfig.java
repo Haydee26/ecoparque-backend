@@ -66,6 +66,12 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/especies/enfermas").hasAuthority("SALUD_VER")
                 .requestMatchers(HttpMethod.PUT, "/api/especies/*/enferma", "/api/especies/*/sana")
                 .hasAuthority("SALUD_EDITAR")
+                // Especimenes: primero las reglas de salud (mas especificas), despues las generales.
+                .requestMatchers(HttpMethod.GET, "/api/especimenes/salud").hasAuthority("SALUD_VER")
+                .requestMatchers(HttpMethod.PUT, "/api/especimenes/*/salud").hasAuthority("SALUD_EDITAR")
+                .requestMatchers(HttpMethod.GET, "/api/especimenes", "/api/especimenes/**")
+                .hasAnyAuthority("ESPECIMENES_VER", "SALUD_VER")
+                .requestMatchers("/api/especimenes", "/api/especimenes/**").hasAuthority("ESPECIMENES_EDITAR")
                 // Catalogo del parque: leer con cualquiera de los permisos VER; escribir con el de cada seccion.
                 .requestMatchers(HttpMethod.GET, "/api/zonas", "/api/zonas/**", "/api/habitats", "/api/habitats/**",
                         "/api/especies", "/api/especies/**", "/api/itinerarios", "/api/itinerarios/**",

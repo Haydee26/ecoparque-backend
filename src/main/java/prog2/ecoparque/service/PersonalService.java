@@ -28,8 +28,8 @@ import prog2.ecoparque.repository.ResponsabilidadCuidadorRepository;
 import prog2.ecoparque.repository.UsuarioRepository;
 
 /**
- * Datos del personal pensados para mostrarse a cualquier usuario con sesion:
- * la lista de guias sin datos personales y los datos de uno mismo.
+ * Datos del personal pensados para mostrarse a cualquier usuario con sesion: la
+ * lista de guias sin datos personales y los datos de uno mismo.
  */
 @Service
 public class PersonalService {
@@ -52,7 +52,9 @@ public class PersonalService {
         this.responsabilidadRepository = responsabilidadRepository;
     }
 
-    /** Nombre de cada guia y de que es guia (itinerarios y zonas). */
+    /**
+     * Nombre de cada guia y de que es guia (itinerarios y zonas).
+     */
     @Transactional(readOnly = true)
     public List<GuiaPublica> guiasPublicas() {
         Map<Long, List<AsignacionGuia>> porGuia = new HashMap<>();
@@ -72,7 +74,9 @@ public class PersonalService {
         return resultado;
     }
 
-    /** Datos de la persona que inicio sesion. */
+    /**
+     * Datos de la persona que inicio sesion.
+     */
     @Transactional(readOnly = true)
     public MisDatos misDatos(String nombreUsuario) {
         Usuario usuario = usuarioRepository.findByNombreUsuario(nombreUsuario)
@@ -143,7 +147,10 @@ public class PersonalService {
         return resultado;
     }
 
-    /** Especies a cargo hoy: las responsabilidades sin fecha hasta o cuya fecha hasta no paso. */
+    /**
+     * Especies a cargo hoy: las responsabilidades sin fecha hasta o cuya fecha
+     * hasta no paso.
+     */
     private List<String> especiesVigentes(Cuidador cuidador) {
         LocalDate hoy = LocalDate.now();
         List<String> resultado = new ArrayList<>();
@@ -152,7 +159,7 @@ public class PersonalService {
                     && Objects.equals(r.getCuidador().getId(), cuidador.getId());
             boolean vigente = r.getFechaHasta() == null || !r.getFechaHasta().isBefore(hoy);
             if (esDelCuidador && vigente && r.getEspecie() != null) {
-                resultado.add(r.getEspecie().getNombreEspanol());
+                resultado.add(r.getEspecie().getNombreCientifico());
             }
         }
         return resultado;

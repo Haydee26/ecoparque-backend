@@ -1,10 +1,11 @@
 package prog2.ecoparque.model;
 
 /**
- * Catalogo de permisos del sistema. Cada seccion tiene dos: VER (consultar) y EDITAR
- * (alta, baja y modificacion). El administrador arma cada rol tildando los que quiera.
- * Los permisos son un catalogo fijo porque el codigo los controla: un permiso solo
- * tiene sentido si alguna parte del sistema lo pregunta.
+ * Catalogo de permisos del sistema. Cada seccion tiene dos: VER (consultar) y
+ * EDITAR (alta, baja y modificacion). El administrador arma cada rol tildando
+ * los que quiera. Los permisos son un catalogo fijo porque el codigo los
+ * controla: un permiso solo tiene sentido si alguna parte del sistema lo
+ * pregunta.
  */
 public enum Permiso {
     ZONAS_VER("Zonas", "Ver"),
@@ -31,10 +32,11 @@ public enum Permiso {
     ROLES_EDITAR("Roles", "Editar"),
     PARQUE_VER("Registro del parque", "Ver"),
     PARQUE_EDITAR("Registro del parque", "Editar"),
-    SALUD_VER("Salud de las especies", "Ver"),
-    SALUD_EDITAR("Salud de las especies", "Editar");
-    ;
-/* SE AGREGO SALUD PARA VER EN LA CONSOLA CON ESTO DEJA VER QUE EL ADMINISTRADOR DECIDA QUE HACER*/
+    ESPECIMENES_VER("Especímenes", "Ver"),
+    ESPECIMENES_EDITAR("Especímenes", "Editar"),
+    SALUD_VER("Salud de los especímenes", "Ver"),
+    SALUD_EDITAR("Salud de los especímenes", "Editar");
+// SALUD: permiso aparte para que el cuidador y el veterinario cambien solo la salud.
     
     private final String seccion;
     private final String accion;
@@ -56,7 +58,9 @@ public enum Permiso {
         return name().endsWith("_EDITAR");
     }
 
-    /** El permiso VER de la misma seccion (editar siempre incluye ver). */
+    /**
+     * El permiso VER de la misma seccion (editar siempre incluye ver).
+     */
     public Permiso verDeLaSeccion() {
         return valueOf(name().replace("_EDITAR", "_VER"));
     }

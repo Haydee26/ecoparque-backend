@@ -9,20 +9,24 @@ import prog2.ecoparque.exception.RecursoNoEncontradoException;
 import prog2.ecoparque.exception.ReglaDeNegocioException;
 import prog2.ecoparque.model.Especie;
 import prog2.ecoparque.repository.EspecieRepository;
-import java.time.LocalDate;
+import prog2.ecoparque.repository.EspecimenRepository;
 
 /**
- * Reglas de las especies: nombre obligatorio y cantidad de ejemplares
- * que nunca puede ser negativa.
+ * Reglas de las especies: el nombre cientifico es obligatorio (identifica a la especie)
+ * y no se puede borrar una especie que todavia tiene especimenes.
  */
 @Service
 public class EspecieService {
-
+    
     private final EspecieRepository especieRepository;
+    private final EspecimenRepository especimenRepository;
 
-    public EspecieService(EspecieRepository especieRepository) {
+    public EspecieService(EspecieRepository especieRepository, EspecimenRepository especimenRepository) {
         this.especieRepository = especieRepository;
+        this.especimenRepository = especimenRepository;
     }
+    
+    
 
     @Transactional(readOnly = true)
     public List<Especie> listar() {
@@ -34,77 +38,53 @@ public class EspecieService {
         return especieRepository.count();
     }
 
-    @Transactional
+     @Transactional
     public Especie crear(Especie datos) {
         validar(datos);
         // Se arma una especie nueva para que nadie pueda pisar una existente mandando un id.
-        Especie nueva = new Especie(datos.getNombreEspanol().trim(), datos.getNombreCientifico(),
-                datos.getDescripcion(), datos.getZona());
-        nueva.setCantidadEjemplares(datos.getCantidadEjemplares() == null ? 0 : datos.getCantidadEjemplares());
+        Especie nueva = new Especie();
+        nueva.setNombreCientifico(datos.getNombreCientifico().trim());
+        nueva.setDescripcion(datos.getDescripcion());
+        nueva.setZona(datos.getZona());
         nueva.setHabitats(datos.getHabitats() == null ? new HashSet<>() : datos.getHabitats());
         return especieRepository.save(nueva);
     }
 
-    @Transactional
+      @Transactional
     public Especie actualizar(Long id, Especie datos) {
         validar(datos);
         Especie especie = buscar(id);
-        especie.setNombreEspanol(datos.getNombreEspanol().trim());
-        especie.setNombreCientifico(datos.getNombreCientifico());
+        especie.setNombreCientifico(datos.getNombreCientifico().trim());
         especie.setDescripcion(datos.getDescripcion());
         especie.setZona(datos.getZona());
         especie.setHabitats(datos.getHabitats() == null ? new HashSet<>() : datos.getHabitats());
-        // Si el pedido no trae la cantidad, se conserva la que ya tenia (no se borra).
-        if (datos.getCantidadEjemplares() != null) {
-            especie.setCantidadEjemplares(datos.getCantidadEjemplares());
-        }
         return especieRepository.save(especie);
     }
 
-    @Transactional
+   @Transactional
     public void eliminar(Long id) {
         buscar(id);
+        // Una especie con animales no se borra: quedarian especimenes sin especie.
+        long cantidad = especimenRepository.countByEspecieId(id);
+        if (cantidad > 0) {
+            throw new ReglaDeNegocioException("La especie tiene " + cantidad
+                    + " especimenes: primero hay que darlos de baja o pasarlos a otra especie.");
+        }
         especieRepository.deleteById(id);
-        // flush: si la especie esta en uso, el error aparece aca y se informa con claridad.
+        // flush: si la especie esta en uso (por ejemplo, en una responsabilidad), el error aparece aca.
         especieRepository.flush();
     }
 
-    @Transactional
-    public Especie avisarEnferma(Long id, String observacion ,String usuario){
-    Validaciones.textoObligatorio(observacion, "La observacion de salud");
-    Especie especie = buscar (id);
-    especie.setEnferma(true);
-    especie.setObservacionSalud(observacion.trim());
-    especie.setFechaAvisoSalud(LocalDate.now());
-    especie.setAvisadoPor(usuario);
-    return especieRepository.save(especie);
-    }
     
-    @Transactional
-    public Especie marcarSana(Long id){
-    Especie especie = buscar (id);
-    especie.setEnferma(false);
-    especie.setObservacionSalud(null);
-    especie.setFechaAvisoSalud(null);
-    especie.setAvisadoPor(null);
-    return especieRepository.save(especie);
-    }
-    
-    @Transactional(readOnly = true)
-    public List<Especie> listarEnfermas(){
-    return especieRepository.findByEnfermaTrue();
-    }
-    
-    private Especie buscar(Long id) {
+     private Especie buscar(Long id) {
         return especieRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No existe la especie " + id + "."));
     }
 
-    private void validar(Especie especie) {
+   private void validar(Especie especie) {
         if (especie == null) {
             throw new ReglaDeNegocioException("Faltan los datos de la especie.");
         }
-        Validaciones.textoObligatorio(especie.getNombreEspanol(), "El nombre de la especie");
-        Validaciones.enteroNoNegativo(especie.getCantidadEjemplares(), "La cantidad de ejemplares");
+        Validaciones.textoObligatorio(especie.getNombreCientifico(), "El nombre cientifico de la especie");
     }
 }

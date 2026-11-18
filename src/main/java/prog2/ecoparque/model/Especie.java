@@ -12,7 +12,13 @@ import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
+import org.hibernate.annotations.Formula;
 
+/**
+ * La especie es solo la descripcion: nombre cientifico, descripcion, zona y
+ * habitats. Los animales concretos son los especimenes, y la salud es de cada
+ * uno de ellos.
+ */
 @Entity
 @Table(name = "especie")
 public class Especie {
@@ -20,16 +26,16 @@ public class Especie {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String nombreEspanol;
     private String nombreCientifico;
     private String descripcion;
-    private boolean enferma = false;
-    private String observacionSalud;
-    private LocalDate fechaAvisoSalud;
-    private String avisadoPor;
-            
-    /** Cantidad de ejemplares (animales) de esta especie en el parque. Nunca negativa. */
+
+    /**
+     * Cuantos especimenes tiene la especie. No es una columna: se calcula
+     * contando en la tabla especimen cada vez que se lee la especie.
+     */
+    @Formula("(select count(*) from especimen e where e.especie_id = id)")
     private Integer cantidadEjemplares;
+
     @ManyToOne
     @JoinColumn(name = "zona_id")
     private Zona zona;
@@ -40,8 +46,7 @@ public class Especie {
     public Especie() {
     }
 
-    public Especie(String nombreEspanol, String nombreCientifico, String descripcion, Zona zona) {
-        this.nombreEspanol = nombreEspanol;
+    public Especie(String nombreCientifico, String descripcion, Zona zona) {
         this.nombreCientifico = nombreCientifico;
         this.descripcion = descripcion;
         this.zona = zona;
@@ -49,14 +54,6 @@ public class Especie {
 
     public Long getId() {
         return id;
-    }
-
-    public String getNombreEspanol() {
-        return nombreEspanol;
-    }
-
-    public void setNombreEspanol(String nombreEspanol) {
-        this.nombreEspanol = nombreEspanol;
     }
 
     public String getNombreCientifico() {
@@ -75,12 +72,11 @@ public class Especie {
         this.descripcion = descripcion;
     }
 
+    /**
+     * Solo lectura: no hay setter porque la cantidad no se escribe, se cuenta!!
+     */
     public Integer getCantidadEjemplares() {
         return cantidadEjemplares;
-    }
-
-    public void setCantidadEjemplares(Integer cantidadEjemplares) {
-        this.cantidadEjemplares = cantidadEjemplares;
     }
 
     public Zona getZona() {
@@ -99,37 +95,4 @@ public class Especie {
         this.habitats = habitats;
     }
 
-    public boolean isEnferma() {
-        return enferma;
-    }
-
-    public void setEnferma(boolean enferma) {
-        this.enferma = enferma;
-    }
-
-    public String getObservacionSalud() {
-        return observacionSalud;
-    }
-
-    public void setObservacionSalud(String observacionSalud) {
-        this.observacionSalud = observacionSalud;
-    }
-
-    public LocalDate getFechaAvisoSalud() {
-        return fechaAvisoSalud;
-    }
-
-    public void setFechaAvisoSalud(LocalDate fechaAvisoSalud) {
-        this.fechaAvisoSalud = fechaAvisoSalud;
-    }
-
-    public String getAvisadoPor() {
-        return avisadoPor;
-    }
-
-    public void setAvisadoPor(String avisadoPor) {
-        this.avisadoPor = avisadoPor;
-    }
-    
-    
 }

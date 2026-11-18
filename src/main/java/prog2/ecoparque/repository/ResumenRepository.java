@@ -6,12 +6,12 @@ import org.springframework.data.repository.Repository;
 import prog2.ecoparque.model.Especie;
 
 /**
- * Consultas de solo lectura para armar el resumen del parque.
- * Hacen las cuentas en la base de datos, sin traer todos los registros.
+ * Consultas de solo lectura para armar el resumen del parque. Hacen las cuentas
+ * en la base de datos, sin traer todos los registros.
  */
 public interface ResumenRepository extends Repository<Especie, Long> {
 
-    @Query("select coalesce(sum(e.cantidadEjemplares), 0L) from Especie e")
+    @Query("select count(e) from Especimen e")
     Long totalEjemplares();
 
     @Query("select count(e) from Especie e")
@@ -23,9 +23,9 @@ public interface ResumenRepository extends Repository<Especie, Long> {
     @Query("select count(c) from Cuidador c")
     Long totalCuidadores();
 
-    @Query("select e.nombreEspanol from Especie e "
+    @Query("select e.nombreCientifico from Especie e "
             + "where e.id not in (select r.especie.id from ResponsabilidadCuidador r where r.especie is not null) "
-            + "order by e.nombreEspanol")
+            + "order by e.nombreCientifico")
     List<String> especiesSinCuidador();
 
     @Query("select i.codigo from Itinerario i "
