@@ -39,7 +39,7 @@ public class EspecimenService {
         return especimenRepository.findByEstadoSaludNot(EstadoSalud.SANO);
     }
 
-    @Transactional
+    @Transactional 
     public Especimen crear(Especimen datos) {
         validar(datos);
         EstadoSalud estado = estadoOSano(datos.getEstadoSalud());

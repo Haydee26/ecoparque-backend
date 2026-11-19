@@ -62,10 +62,6 @@ public class SecurityConfig {
                 .hasAuthority("PARQUE_VER")
                 .requestMatchers("/api/parque", "/api/parque/**", "/api/resumen", "/api/resumen/**")
                 .hasAuthority("PARQUE_EDITAR")
-                // Salud de las especies (tiene que ir ANTES del catalogo, porque se usa la primera regla que coincide).
-                .requestMatchers(HttpMethod.GET, "/api/especies/enfermas").hasAuthority("SALUD_VER")
-                .requestMatchers(HttpMethod.PUT, "/api/especies/*/enferma", "/api/especies/*/sana")
-                .hasAuthority("SALUD_EDITAR")
                 // Especimenes: primero las reglas de salud (mas especificas), despues las generales.
                 .requestMatchers(HttpMethod.GET, "/api/especimenes/salud").hasAuthority("SALUD_VER")
                 .requestMatchers(HttpMethod.PUT, "/api/especimenes/*/salud").hasAuthority("SALUD_EDITAR")

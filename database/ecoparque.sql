@@ -1,7 +1,9 @@
 -- Esquema de la base de datos del Ecoparque.
--- Entidades: zona, habitat, especie, itinerario, empleado, guia, cuidador, rol, usuario.
--- especie guarda ademas el aviso de salud (enferma, observacion_salud, fecha_aviso_salud, avisado_por):
---   el cuidador avisa que una especie esta enferma y lo ven el administrador y el veterinario.
+-- Entidades: zona, habitat, especie, especimen, itinerario, empleado, guia, cuidador, rol, usuario.
+-- especie es solo la descripcion (nombre cientifico, descripcion, zona, habitats).
+-- especimen es cada animal concreto: pertenece a una especie (relacion 1 a N) y tiene su
+--   propio estado de salud (SANO, ENFERMO, EN_TRATAMIENTO) desde que ingresa al parque.
+--   La cantidad de animales por especie no se guarda: se cuenta en la tabla especimen.
 -- empleado: todas las personas del parque (incluido el administrador). Guia y cuidador son
 -- roles de un empleado (relacion 1 a 1 con empleado), sin datos personales propios.
 -- Relaciones simples M:N (sin atributos propios): especie_habitat, itinerario_zona.
@@ -44,19 +46,13 @@ CREATE TABLE habitat_continente (
     FOREIGN KEY (habitat_id) REFERENCES habitat(id) ON DELETE CASCADE
 );
 
+-- La especie es la descripcion general. El nombre cientifico la identifica (UNIQUE):
+-- el nombre comun cambia segun el pais, el cientifico es unico en el mundo.
 CREATE TABLE especie (
     id                 INT AUTO_INCREMENT PRIMARY KEY,
-    nombre_espanol     VARCHAR(100) NOT NULL UNIQUE,
-    nombre_cientifico  VARCHAR(150) NOT NULL,
+    nombre_cientifico  VARCHAR(150) NOT NULL UNIQUE,
     descripcion        VARCHAR(500),
-    cantidad_ejemplares INT NOT NULL DEFAULT 0,
     zona_id            INT NOT NULL,
-    -- Aviso de salud: lo carga quien tiene el permiso SALUD_EDITAR (por ejemplo, el cuidador).
-    -- La fecha y el usuario los pone el servidor, no la pantalla.
-    enferma            TINYINT(1) NOT NULL DEFAULT 0,
-    observacion_salud  VARCHAR(255),
-    fecha_aviso_salud  DATE,
-    avisado_por        VARCHAR(255),
     FOREIGN KEY (zona_id) REFERENCES zona(id)
 );
 
@@ -68,6 +64,18 @@ CREATE TABLE especie_habitat (
     PRIMARY KEY (especie_id, habitat_id),
     FOREIGN KEY (especie_id) REFERENCES especie(id) ON DELETE CASCADE,
     FOREIGN KEY (habitat_id) REFERENCES habitat(id) ON DELETE CASCADE
+);
+
+-- Cada animal del parque. Relacion 1 a N con especie: la FK va del lado de "muchos".
+-- Sin ON DELETE CASCADE: una especie con especimenes no se puede borrar.
+CREATE TABLE especimen (
+    id                 INT AUTO_INCREMENT PRIMARY KEY,
+    nombre             VARCHAR(100) NOT NULL,
+    especie_id         INT NOT NULL,
+    fecha_ingreso      DATE NOT NULL,
+    estado_salud       VARCHAR(20) NOT NULL DEFAULT 'SANO',
+    observacion_salud  VARCHAR(255),
+    FOREIGN KEY (especie_id) REFERENCES especie(id)
 );
 
 CREATE TABLE itinerario (
@@ -181,10 +189,10 @@ INSERT INTO rol (nombre, descripcion, es_base) VALUES
     ('CUIDADOR', 'Consulta el parque y las especies a su cargo', 1),
     ('INVITADO', 'Visita: solo consulta el parque', 1);
 
--- ROL de ejemplo creado por el administrador (no es base): el veterinario ve las especies
--- que los cuidadores avisaron como enfermas y puede corregir el aviso o marcarlas sanas.
+-- ROL de ejemplo creado por el administrador (no es base): el veterinario ve los especimenes
+-- que no estan sanos y puede cambiar su estado de salud.
 INSERT INTO rol (nombre, descripcion, es_base) VALUES
-    ('VETERINARIO', 'Atiende la salud de las especies', 0);
+    ('VETERINARIO', 'Atiende la salud de los especimenes', 0);
 
 -- PERMISOS: el administrador tiene todos; guia, cuidador e invitado consultan el parque.
 INSERT INTO rol_permiso (rol_id, permiso) VALUES
@@ -212,6 +220,8 @@ INSERT INTO rol_permiso (rol_id, permiso) VALUES
     ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'ROLES_EDITAR'),
     ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'PARQUE_VER'),
     ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'PARQUE_EDITAR'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'ESPECIMENES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'ESPECIMENES_EDITAR'),
     ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'SALUD_VER'),
     ((SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'SALUD_EDITAR'),
     ((SELECT id FROM rol WHERE nombre = 'GUIA'), 'ZONAS_VER'),
@@ -226,6 +236,7 @@ INSERT INTO rol_permiso (rol_id, permiso) VALUES
     ((SELECT id FROM rol WHERE nombre = 'CUIDADOR'), 'ITINERARIOS_VER'),
     ((SELECT id FROM rol WHERE nombre = 'CUIDADOR'), 'ASIGNACIONES_VER'),
     ((SELECT id FROM rol WHERE nombre = 'CUIDADOR'), 'RESPONSABILIDADES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'CUIDADOR'), 'ESPECIMENES_VER'),
     ((SELECT id FROM rol WHERE nombre = 'CUIDADOR'), 'SALUD_EDITAR'),
     ((SELECT id FROM rol WHERE nombre = 'INVITADO'), 'ZONAS_VER'),
     ((SELECT id FROM rol WHERE nombre = 'INVITADO'), 'HABITATS_VER'),
@@ -235,6 +246,7 @@ INSERT INTO rol_permiso (rol_id, permiso) VALUES
     ((SELECT id FROM rol WHERE nombre = 'INVITADO'), 'RESPONSABILIDADES_VER'),
     ((SELECT id FROM rol WHERE nombre = 'VETERINARIO'), 'ESPECIES_VER'),
     ((SELECT id FROM rol WHERE nombre = 'VETERINARIO'), 'CUIDADORES_VER'),
+    ((SELECT id FROM rol WHERE nombre = 'VETERINARIO'), 'ESPECIMENES_VER'),
     ((SELECT id FROM rol WHERE nombre = 'VETERINARIO'), 'SALUD_VER'),
     ((SELECT id FROM rol WHERE nombre = 'VETERINARIO'), 'SALUD_EDITAR');
 
@@ -250,14 +262,15 @@ INSERT INTO usuario (nombre_usuario, clave, rol_id, nombre_persona) VALUES
 -- PARQUE (area total en m2; el administrador puede cambiarla desde Registro del parque)
 INSERT INTO parque (id, nombre, area_total) VALUES (1, 'EcoParque', 10000);
 
--- ZONAS
+-- ZONAS (mapa de 10 columnas x 6 filas; el Reptilario usa el hueco de la columna 10)
 INSERT INTO zona (nombre, extension, columna, fila, ancho, alto) VALUES
 ('Sabana Africana', 1500, 1, 1, 4, 3),
 ('Selva Tropical', 1200, 5, 1, 3, 3),
 ('Bosque Templado', 900, 4, 4, 3, 3),
 ('Montaña', 1100, 8, 1, 3, 3),
 ('Desierto', 1000, 1, 4, 3, 3),
-('Humedal', 800, 7, 4, 3, 3);
+('Humedal', 800, 7, 4, 3, 3),
+('Reptilario', 300, 10, 4, 1, 3);
 
 -- HABITATS
 INSERT INTO habitat (nombre, clima, vegetacion_predominante) VALUES
@@ -266,7 +279,8 @@ INSERT INTO habitat (nombre, clima, vegetacion_predominante) VALUES
 ('Bosque', 'Templado', 'Arboles y arbustos'),
 ('Montaña', 'Frio y seco', 'Pastos de altura'),
 ('Desierto', 'Calido y arido', 'Cactus y arbustos bajos'),
-('Humedal', 'Templado y humedo', 'Juncos y plantas acuaticas');
+('Humedal', 'Templado y humedo', 'Juncos y plantas acuaticas'),
+('Terrario', 'Calido controlado', 'Arena, piedras y troncos');
 
 -- CONTINENTES DE LOS HABITATS
 INSERT INTO habitat_continente (habitat_id, continente) VALUES
@@ -275,27 +289,131 @@ INSERT INTO habitat_continente (habitat_id, continente) VALUES
 (3, 'Europa'),
 (4, 'América del Sur'),
 (5, 'África'),
-(6, 'América del Sur');
+(6, 'América del Sur'),
+(7, 'América del Sur');
 
--- ESPECIES
-INSERT INTO especie
-(nombre_espanol, nombre_cientifico, descripcion, cantidad_ejemplares, zona_id)
-VALUES
-('Leon', 'Panthera leo', 'Mamifero carnivoro', 4, 1),
-('Jaguar', 'Panthera onca', 'Felino de selva', 2, 2),
-('Oso pardo', 'Ursus arctos', 'Mamifero omnivoro', 3, 3),
-('Condor andino', 'Vultur gryphus', 'Ave carroñera de gran tamaño', 2, 4),
-('Camello', 'Camelus dromedarius', 'Mamifero herbivoro del desierto', 3, 5),
-('Flamenco', 'Phoenicopterus chilensis', 'Ave zancuda de plumaje rosado', 6, 6);
+-- ESPECIES (la descripcion empieza con el nombre comun, para saber de que animal se trata)
+INSERT INTO especie (nombre_cientifico, descripcion, zona_id) VALUES
+-- Sabana Africana (zona 1)
+('Panthera leo', 'León: felino carnívoro que vive en manadas', 1),
+('Giraffa camelopardalis', 'Jirafa: el animal terrestre más alto', 1),
+('Loxodonta africana', 'Elefante africano: el mamífero terrestre más grande', 1),
+('Equus quagga', 'Cebra: herbívoro de rayas blancas y negras', 1),
+-- Selva Tropical (zona 2)
+('Panthera onca', 'Yaguareté: el felino más grande de América', 2),
+('Ramphastos toco', 'Tucán toco: ave de pico grande y anaranjado', 2),
+('Alouatta caraya', 'Mono carayá: mono aullador del norte argentino', 2),
+('Amazona aestiva', 'Loro hablador: loro verde que imita sonidos', 2),
+-- Bosque Templado (zona 3)
+('Ursus arctos', 'Oso pardo: mamífero omnívoro de gran tamaño', 3),
+('Lycalopex griseus', 'Zorro gris: zorro pequeño de la Patagonia', 3),
+('Cervus elaphus', 'Ciervo colorado: ciervo grande de cuernos ramificados', 3),
+-- Montaña (zona 4)
+('Vultur gryphus', 'Cóndor andino: ave carroñera, una de las voladoras más grandes del mundo', 4),
+('Puma concolor', 'Puma: felino solitario de las montañas de América', 4),
+('Lama guanicoe', 'Guanaco: camélido salvaje de la Patagonia y los Andes', 4),
+-- Desierto (zona 5)
+('Camelus dromedarius', 'Dromedario: herbívoro del desierto con una sola joroba', 5),
+('Suricata suricatta', 'Suricata: pequeño mamífero que vive en colonias', 5),
+-- Humedal (zona 6)
+('Phoenicopterus chilensis', 'Flamenco austral: ave zancuda de plumaje rosado', 6),
+('Hydrochoerus hydrochaeris', 'Carpincho: el roedor más grande del mundo', 6),
+('Caiman latirostris', 'Yacaré overo: reptil de los esteros del Litoral', 6),
+-- Reptilario (zona 7)
+('Chelonoidis chilensis', 'Tortuga terrestre argentina: tortuga de tierra de vida muy larga', 7),
+('Iguana iguana', 'Iguana verde: reptil herbívoro de cola larga', 7),
+('Boa constrictor', 'Boa constrictora: serpiente que atrapa a sus presas enrollándose', 7),
+('Grammostola rosea', 'Tarántula rosada: araña grande y peluda, de picadura leve', 7),
+('Pandinus imperator', 'Escorpión emperador: escorpión negro de gran tamaño', 7);
 
--- ESPECIE - HABITAT
+-- ESPECIE - HABITAT (cada especie con el habitat de su zona)
 INSERT INTO especie_habitat (especie_id, habitat_id) VALUES
-(1, 1),
-(2, 2),
-(3, 3),
-(4, 4),
-(5, 5),
-(6, 6);
+(1, 1), (2, 1), (3, 1), (4, 1),
+(5, 2), (6, 2), (7, 2), (8, 2),
+(9, 3), (10, 3), (11, 3),
+(12, 4), (13, 4), (14, 4),
+(15, 5), (16, 5),
+(17, 6), (18, 6), (19, 6),
+(20, 7), (21, 7), (22, 7), (23, 7), (24, 7);
+
+-- ESPECIMENES (cada animal; la cantidad por especie se cuenta, no se guarda)
+INSERT INTO especimen (nombre, especie_id, fecha_ingreso, estado_salud, observacion_salud) VALUES
+-- Leones
+('Simba', 1, '2022-04-15', 'SANO', NULL),
+('Nala', 1, '2022-04-15', 'SANO', NULL),
+('Kiara', 1, '2026-08-02', 'ENFERMO', 'Llegó con una herida en la pata'),
+-- Jirafas
+('Estela', 2, '2023-05-25', 'SANO', NULL),
+('Rafa', 2, '2024-08-16', 'SANO', NULL),
+-- Elefantes
+('Tembo', 3, '2020-12-01', 'SANO', NULL),
+('Kali', 3, '2022-02-22', 'SANO', NULL),
+-- Cebras
+('Rayitas', 4, '2023-10-03', 'SANO', NULL),
+('Zebi', 4, '2025-01-27', 'SANO', NULL),
+-- Yaguaretes
+('Tobuna', 5, '2023-06-20', 'SANO', NULL),
+('Arami', 5, '2024-11-05', 'SANO', NULL),
+-- Tucanes
+('Pico', 6, '2024-06-10', 'SANO', NULL),
+('Mango', 6, '2025-07-19', 'SANO', NULL),
+-- Monos caraya
+('Coco', 7, '2023-02-11', 'SANO', NULL),
+('Tita', 7, '2023-02-11', 'SANO', NULL),
+('Chango', 7, '2025-09-04', 'SANO', NULL),
+-- Loros habladores
+('Pepe', 8, '2022-11-30', 'SANO', NULL),
+('Lorenza', 8, '2024-04-14', 'SANO', NULL),
+-- Osos pardos
+('Bruno', 9, '2021-05-10', 'SANO', NULL),
+('Greta', 9, '2021-05-10', 'SANO', NULL),
+-- Zorros grises
+('Pampa', 10, '2024-03-21', 'SANO', NULL),
+('Gris', 10, '2025-06-08', 'SANO', NULL),
+-- Ciervos colorados
+('Bambi', 11, '2023-08-19', 'SANO', NULL),
+('Rojo', 11, '2023-08-19', 'SANO', NULL),
+-- Condores
+('Inti', 12, '2022-10-01', 'EN_TRATAMIENTO', 'Rescatado con intoxicación por plomo'),
+('Wayra', 12, '2023-03-18', 'SANO', NULL),
+-- Pumas
+('Tayra', 13, '2023-12-04', 'SANO', NULL),
+('Ñandi', 13, '2025-05-12', 'SANO', NULL),
+-- Guanacos
+('Chulengo', 14, '2024-01-09', 'SANO', NULL),
+('Lana', 14, '2024-01-09', 'SANO', NULL),
+('Andes', 14, '2025-11-02', 'SANO', NULL),
+-- Dromedarios
+('Omar', 15, '2022-07-07', 'SANO', NULL),
+('Duna', 15, '2025-04-30', 'SANO', NULL),
+-- Suricatas
+('Zuri', 16, '2025-03-08', 'SANO', NULL),
+('Kibo', 16, '2025-03-08', 'SANO', NULL),
+('Nuri', 16, '2025-03-08', 'SANO', NULL),
+-- Flamencos
+('Rosa', 17, '2024-01-20', 'SANO', NULL),
+('Coral', 17, '2024-01-20', 'SANO', NULL),
+('Fresa', 17, '2024-03-02', 'SANO', NULL),
+-- Carpinchos
+('Pancho', 18, '2024-09-30', 'ENFERMO', 'Parásitos intestinales, en observación'),
+('Lola', 18, '2024-09-30', 'SANO', NULL),
+('Chiqui', 18, '2026-01-15', 'SANO', NULL),
+-- Yacares
+('Dientes', 19, '2023-07-14', 'SANO', NULL),
+('Overo', 19, '2024-12-02', 'SANO', NULL),
+-- Tortugas
+('Manuelita', 20, '2015-03-01', 'SANO', NULL),
+('Tortu', 20, '2021-09-17', 'SANO', NULL),
+-- Iguanas
+('Verdi', 21, '2024-05-23', 'SANO', NULL),
+('Iggy', 21, '2025-08-11', 'EN_TRATAMIENTO', 'Muda de piel incompleta, en control'),
+-- Boas
+('Kaa', 22, '2022-06-06', 'SANO', NULL),
+-- Tarantulas
+('Rosita', 23, '2024-10-10', 'SANO', NULL),
+('Peluda', 23, '2025-02-18', 'SANO', NULL),
+-- Escorpiones
+('Negro', 24, '2025-07-01', 'SANO', NULL);
 
 -- ITINERARIOS
 INSERT INTO itinerario
@@ -312,7 +430,8 @@ INSERT INTO itinerario_zona (itinerario_id, zona_id) VALUES
 (2, 3),
 (3, 4),
 (3, 5),
-(3, 6);
+(3, 6),
+(3, 7);
 
 -- EMPLEADOS (todas las personas del parque)
 INSERT INTO empleado
@@ -344,5 +463,6 @@ INSERT INTO responsabilidad_cuidador
 (cuidador_id, especie_id, fecha_desde)
 VALUES
 (1, 1, '2025-01-01'),
-(1, 2, '2025-02-01'),
-(2, 3, '2025-03-01');
+(1, 5, '2025-02-01'),
+(2, 9, '2025-03-01'),
+(2, 22, '2025-04-01');
