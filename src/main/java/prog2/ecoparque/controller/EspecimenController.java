@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import prog2.ecoparque.model.Especimen;
 import prog2.ecoparque.model.EstadoSalud;
 import prog2.ecoparque.service.EspecimenService;
+import org.springframework.security.core.Authentication;
 
 @RestController // esta clase atiende pedidos HTTP y devuelve JSON. 
 //Es la capa controlador: no tiene reglas de negocio, solo recibe el pedido y se lo pasa al servicio.
@@ -57,8 +58,10 @@ public class EspecimenController {
 /*record CambioSalud: un record es una clase chiquita solo para transportar
     datos (es un DTO). Para cambiar la salud no hace falta mandar el espécimen entero, alcanza con:*/
     @PutMapping("/{id}/salud")
-    public Especimen cambiarSalud(@PathVariable Long id, @RequestBody CambioSalud cambio) {
-        return especimenService.cambiarSalud(id, cambio.estado(), cambio.observacion());
+    public Especimen cambiarSalud(@PathVariable Long id, @RequestBody CambioSalud cambio,
+            Authentication autenticacion) {
+        return especimenService.cambiarSalud(id, cambio.estado(), cambio.observacion(),
+                autenticacion.getName());
     }
 
     @DeleteMapping("/{id}")

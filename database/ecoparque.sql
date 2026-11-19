@@ -75,6 +75,8 @@ CREATE TABLE especimen (
     fecha_ingreso      DATE NOT NULL,
     estado_salud       VARCHAR(20) NOT NULL DEFAULT 'SANO',
     observacion_salud  VARCHAR(255),
+    avisado_por        VARCHAR(50),        -- usuario que hizo el ultimo cambio de salud
+    fecha_aviso_salud  DATE,               -- fecha de ese cambio
     FOREIGN KEY (especie_id) REFERENCES especie(id)
 );
 

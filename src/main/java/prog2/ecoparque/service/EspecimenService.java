@@ -64,19 +64,18 @@ public class EspecimenService {
         return especimenRepository.save(especimen);
     }
 
-    /**
-     * Cambia solo la salud (lo usan el cuidador y el veterinario).
-     */
+       /** Cambia solo la salud y registra quien hizo el cambio y cuando. */
     @Transactional
-    public Especimen cambiarSalud(Long id, EstadoSalud estado, String observacion) {
-
+    public Especimen cambiarSalud(Long id, EstadoSalud estado, String observacion, String usuario) {
         if (estado == null) {
-            throw new ReglaDeNegocioException("Hay que indicar el estado de salud");
+            throw new ReglaDeNegocioException("Hay que indicar el estado de salud.");
         }
         validarSalud(estado, observacion);
         Especimen especimen = buscar(id);
         especimen.setEstadoSalud(estado);
         especimen.setObservacionSalud(limpiar(observacion));
+        especimen.setAvisadoPor(usuario);              // NUEVO: quien hizo el cambio
+        especimen.setFechaAvisoSalud(LocalDate.now()); // NUEVO: la fecha de hoy
         return especimenRepository.save(especimen);
     }
 
